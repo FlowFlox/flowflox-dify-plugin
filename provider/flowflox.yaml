@@ -1,0 +1,43 @@
+provider: flowflox
+label:
+  en_US: Flox
+description:
+  en_US: "Flox finds the right ready-to-help AI for each request."
+icon_small:
+  en_US: icon.svg
+background: "#EEF4FF"
+help:
+  title:
+    en_US: Set up Flox
+  url:
+    en_US: https://gateway.flowflox.dev/v1
+supported_model_types:
+  - llm
+configurate_methods:
+  - predefined-model
+provider_credential_schema:
+  credential_form_schemas:
+    - variable: api_base_url
+      label:
+        en_US: Flox connection URL
+      type: text-input
+      required: true
+      placeholder:
+        en_US: https://gateway.flowflox.dev/v1
+    - variable: api_key
+      label:
+        en_US: Flox connection key
+      type: secret-input
+      required: true
+      placeholder:
+        en_US: Server-only Flox connection key
+models:
+  llm:
+    predefined:
+      - "models/llm/*.yaml"
+    position: "models/llm/_position.yaml"
+extra:
+  python:
+    provider_source: provider/flowflox.py
+    model_sources:
+      - models/llm/llm.py

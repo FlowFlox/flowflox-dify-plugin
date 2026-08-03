@@ -1,0 +1,10 @@
+[project]
+name = "flowflox-dify-model-provider"
+version = "0.1.2"
+description = "Flox, the FlowFlox AI for Dify"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "dify_plugin>=0.9.0",
+  "requests>=2.32.0",
+]
