@@ -1,9 +1,9 @@
-version: 0.1.4
+version: 0.1.5
 type: plugin
 author: "flowflox"
 name: "flowflox"
 description:
-  en_US: "Capability-routed FlowFlox models for Dify."
+  en_US: "Bring FlowFlox to your Dify workspace."
 label:
   en_US: "FlowFlox"
 created_at: "2026-08-03T06:35:00Z"

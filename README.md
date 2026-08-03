@@ -2,7 +2,7 @@
 
 Bring FlowFlox into your Dify workspace.
 
-Choose the capability your app needs and keep building:
+Choose what your app needs and keep building:
 
 - Chat
 - Code
@@ -10,7 +10,7 @@ Choose the capability your app needs and keep building:
 - Tools
 - Vision
 
-FlowFlox takes care of finding an available compatible model for each request.
+FlowFlox takes care of the details in the background.
 
 ## Get started
 

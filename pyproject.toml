@@ -1,7 +1,7 @@
 [project]
 name = "flowflox-dify-model-provider"
-version = "0.1.4"
-description = "Capability-routed FlowFlox models for Dify"
+version = "0.1.5"
+description = "Bring FlowFlox to your Dify workspace"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
