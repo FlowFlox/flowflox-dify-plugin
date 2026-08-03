@@ -67,9 +67,16 @@ def flowflox_headers(
     return headers
 
 
-def chosen_model(credentials: Mapping, required_capabilities: tuple[str, ...]) -> tuple[str, bool]:
-    """Return a configured live model, otherwise the automatic Flox route."""
-    candidate = str(credentials.get("test_model") or "").strip()
+def chosen_model(
+    model_parameters: Mapping,
+    credentials: Mapping,
+    required_capabilities: tuple[str, ...],
+) -> tuple[str, bool]:
+    """Return this node's live model, otherwise the automatic Flox route."""
+    # `test_model` is kept only for workspaces configured with plugin versions before 0.1.7.
+    candidate = str(
+        model_parameters.get("flowflox_model_id") or credentials.get("test_model") or ""
+    ).strip()
     if not candidate:
         return AUTOMATIC_MODEL, True
     try:
@@ -120,7 +127,7 @@ class FlowFloxLargeLanguageModel(LargeLanguageModel):
             )
 
         target_model, use_automatic_route = (
-            chosen_model(credentials, required_capabilities)
+            chosen_model(model_parameters, credentials, required_capabilities)
             if model == CHOSEN_MODEL_PROFILE
             else (AUTOMATIC_MODEL, True)
         )

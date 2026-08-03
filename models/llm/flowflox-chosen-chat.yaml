@@ -7,6 +7,14 @@ model_properties:
   mode: chat
   context_size: 32768
 parameter_rules:
+  - name: flowflox_model_id
+    label:
+      en_US: Model ID to try
+    type: string
+    required: false
+    default: ""
+    help:
+      en_US: "Optional. Use this live Flox model for this node; otherwise Flox chooses automatically."
   - name: temperature
     use_template: temperature
   - name: top_p
