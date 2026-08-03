@@ -37,7 +37,7 @@ jobs:
           release_work_dir="$(mktemp -d)"
           trap 'rm -rf "$release_work_dir"' EXIT
           mkdir "$release_work_dir/plugin"
-          rsync -a --exclude='.git' --exclude='.github' --exclude='*.difypkg' --exclude='__pycache__' ./ "$release_work_dir/plugin/"
+          rsync -a --exclude='.git' --exclude='.github' --exclude='.bin' --exclude='dist' --exclude='*.difypkg' --exclude='__pycache__' ./ "$release_work_dir/plugin/"
           printf '%s' "$FLOWFLOX_DIFY_SIGNING_PRIVATE_KEY" > "$release_work_dir/flowflox-dify.private.pem"
 
           ./.bin/dify plugin package "$release_work_dir/plugin" -o "$release_work_dir/flowflox-model-provider-$version.difypkg"
