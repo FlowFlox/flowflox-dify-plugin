@@ -1,0 +1,56 @@
+name: Publish signed Dify package
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download the pinned Dify CLI
+        run: |
+          set -euo pipefail
+          mkdir -p .bin
+          curl --fail --location --silent --show-error \
+            --output .bin/dify \
+            https://github.com/langgenius/dify-plugin-daemon/releases/download/0.6.4/dify-plugin-linux-amd64
+          echo "5c63341c6d466d7126e41a4f39a7e73a54ff7aab0f28463a726590ae5b8d6f1c  .bin/dify" | sha256sum --check
+          chmod +x .bin/dify
+
+      - name: Package and verify the signed plugin
+        env:
+          FLOWFLOX_DIFY_SIGNING_PRIVATE_KEY: ${{ secrets.FLOWFLOX_DIFY_SIGNING_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$FLOWFLOX_DIFY_SIGNING_PRIVATE_KEY"
+          version="${GITHUB_REF_NAME#v}"
+          manifest_version="$(ruby -ryaml -e 'puts YAML.load_file("manifest.yaml").fetch("version")')"
+          test "$version" = "$manifest_version"
+
+          release_work_dir="$(mktemp -d)"
+          trap 'rm -rf "$release_work_dir"' EXIT
+          mkdir "$release_work_dir/plugin"
+          rsync -a --exclude='.git' --exclude='.github' --exclude='*.difypkg' --exclude='__pycache__' ./ "$release_work_dir/plugin/"
+          printf '%s' "$FLOWFLOX_DIFY_SIGNING_PRIVATE_KEY" > "$release_work_dir/flowflox-dify.private.pem"
+
+          ./.bin/dify plugin package "$release_work_dir/plugin" -o "$release_work_dir/flowflox-model-provider-$version.difypkg"
+          ./.bin/dify signature sign "$release_work_dir/flowflox-model-provider-$version.difypkg" -p "$release_work_dir/flowflox-dify.private.pem"
+          ./.bin/dify signature verify "$release_work_dir/flowflox-model-provider-$version.signed.difypkg" -p signing/flowflox-dify.public.pem
+
+          mkdir -p dist
+          cp "$release_work_dir/flowflox-model-provider-$version.signed.difypkg" "dist/flowflox-model-provider-$version.signed.difypkg"
+
+      - name: Publish the signed package
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" "dist/flowflox-model-provider-${GITHUB_REF_NAME#v}.signed.difypkg" \
+            --title "FlowFlox for Dify $GITHUB_REF_NAME" \
+            --generate-notes

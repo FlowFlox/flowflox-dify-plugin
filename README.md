@@ -20,3 +20,7 @@ FlowFlox takes care of the details in the background.
 4. Build and publish.
 
 For a one-off comparison, choose **Chosen model — Chat**, then enter a model ID in that node's optional **Model ID to try** setting. Flox uses that model while it is live, then returns to Automatic if it is unavailable.
+
+## Releases
+
+Every version tag publishes one verified, signed package. The signing key stays in GitHub Actions; the public key is available in [`signing/flowflox-dify.public.pem`](signing/flowflox-dify.public.pem) for Dify installations that enforce third-party verification.
