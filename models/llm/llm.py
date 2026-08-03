@@ -26,11 +26,14 @@ from dify_plugin.interfaces.model.large_language_model import LargeLanguageModel
 
 PROFILE_CAPABILITIES: dict[str, tuple[str, ...]] = {
     "flowflox-auto-chat": ("chat",),
+    "flowflox-chosen-chat": ("chat",),
     "flowflox-auto-code": ("chat", "code"),
     "flowflox-auto-reasoning": ("chat", "reasoning"),
     "flowflox-auto-tools": ("chat", "tools"),
     "flowflox-auto-vision": ("chat", "vision"),
 }
+CHOSEN_MODEL_PROFILE = "flowflox-chosen-chat"
+AUTOMATIC_MODEL = "flowflox-auto"
 
 
 def api_url(credentials: Mapping, path: str) -> str:
@@ -42,16 +45,51 @@ def api_url(credentials: Mapping, path: str) -> str:
     return f"{base_url}{path}"
 
 
-def flowflox_headers(credentials: Mapping, required_capabilities: tuple[str, ...]) -> dict[str, str]:
+def flowflox_headers(
+    credentials: Mapping,
+    required_capabilities: tuple[str, ...],
+    *,
+    runtime_only: bool,
+    direct_model_test: bool = False,
+) -> dict[str, str]:
     api_key = str(credentials.get("api_key") or "").strip()
     if not api_key:
         raise CredentialsValidateFailedError("FlowFlox internal integration credential is required.")
-    return {
+    headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
-        "X-FlowFlox-Runtime-Only": "true",
-        "X-FlowFlox-Required-Capabilities": ",".join(required_capabilities),
     }
+    if runtime_only:
+        headers["X-FlowFlox-Runtime-Only"] = "true"
+        headers["X-FlowFlox-Required-Capabilities"] = ",".join(required_capabilities)
+    if direct_model_test:
+        headers["X-FlowFlox-Direct-Model-Test"] = "true"
+    return headers
+
+
+def chosen_model(credentials: Mapping, required_capabilities: tuple[str, ...]) -> tuple[str, bool]:
+    """Return a configured live model, otherwise the automatic Flox route."""
+    candidate = str(credentials.get("test_model") or "").strip()
+    if not candidate:
+        return AUTOMATIC_MODEL, True
+    try:
+        response = requests.get(
+            api_url(credentials, "/v1/models"),
+            headers=flowflox_headers(credentials, required_capabilities, runtime_only=False),
+            timeout=15,
+        )
+        models = response.json().get("data") if response.ok else []
+    except (requests.RequestException, AttributeError, ValueError):
+        models = []
+    for entry in models or []:
+        if not isinstance(entry, Mapping):
+            continue
+        if str(entry.get("id") or "").strip() != candidate:
+            continue
+        capabilities = set((entry.get("flowflox") or {}).get("capabilities") or [])
+        if set(required_capabilities).issubset(capabilities):
+            return candidate, False
+    return AUTOMATIC_MODEL, True
 
 
 class FlowFloxLargeLanguageModel(LargeLanguageModel):
@@ -75,16 +113,19 @@ class FlowFloxLargeLanguageModel(LargeLanguageModel):
     ) -> LLMResult | Generator[LLMResultChunk, None, None]:
         required_capabilities = PROFILE_CAPABILITIES.get(model)
         if not required_capabilities:
-            raise InvokeBadRequestError("Choose an Automatic capability profile for this task.")
+            raise InvokeBadRequestError("Choose a Flox option for this task.")
         if tools and "tools" not in required_capabilities:
             raise InvokeBadRequestError(
                 "This node uses tools. Choose Automatic — Tools for this task."
             )
 
+        target_model, use_automatic_route = (
+            chosen_model(credentials, required_capabilities)
+            if model == CHOSEN_MODEL_PROFILE
+            else (AUTOMATIC_MODEL, True)
+        )
         body: dict[str, Any] = {
-            # This is a stable routing alias. It does not name the model or GPU
-            # that will execute the request; FlowFlox chooses that internally.
-            "model": "flowflox-auto",
+            "model": target_model,
             "messages": [self._message_to_openai(message) for message in prompt_messages],
             "stream": False,
         }
@@ -111,12 +152,28 @@ class FlowFloxLargeLanguageModel(LargeLanguageModel):
         try:
             response = requests.post(
                 api_url(credentials, "/v1/chat/completions"),
-                headers=flowflox_headers(credentials, required_capabilities),
+                headers=flowflox_headers(
+                    credentials,
+                    required_capabilities,
+                    runtime_only=use_automatic_route,
+                    direct_model_test=not use_automatic_route,
+                ),
                 json=body,
                 timeout=120,
             )
         except requests.RequestException as error:
             raise InvokeConnectionError("Could not reach FlowFlox's automatic runtime.") from error
+        if model == CHOSEN_MODEL_PROFILE and not use_automatic_route and response.status_code in (404, 409, 503):
+            body["model"] = AUTOMATIC_MODEL
+            try:
+                response = requests.post(
+                    api_url(credentials, "/v1/chat/completions"),
+                    headers=flowflox_headers(credentials, required_capabilities, runtime_only=True),
+                    json=body,
+                    timeout=120,
+                )
+            except requests.RequestException as error:
+                raise InvokeConnectionError("Could not reach FlowFlox's automatic runtime.") from error
         if response.status_code in (401, 403):
             raise InvokeAuthorizationError("The FlowFlox integration credential was not accepted.")
         if response.status_code == 400:
@@ -170,7 +227,7 @@ class FlowFloxLargeLanguageModel(LargeLanguageModel):
         try:
             response = requests.get(
                 api_url(credentials, "/v1/models"),
-                headers=flowflox_headers(credentials, required_capabilities),
+                headers=flowflox_headers(credentials, required_capabilities, runtime_only=True),
                 timeout=15,
             )
         except requests.RequestException as error:
