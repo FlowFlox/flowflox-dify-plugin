@@ -1,6 +1,6 @@
 model: flowflox-auto-vision
 label:
-  en_US: "Flox — Vision"
+  en_US: "Automatic — Vision"
 model_type: llm
 features:
   - vision

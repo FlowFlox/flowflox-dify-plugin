@@ -1,15 +1,17 @@
-# Flox for Dify
+# FlowFlox models for Dify
 
-Flox is the FlowFlox AI. In Dify, choose the Flox option that matches the task
-and Flox finds a ready, compatible AI to do the work.
+This provider is routing infrastructure, not an AI persona. It chooses a live,
+compatible FlowFlox model for each requested capability. Name and personality
+belong in the Dify app's own instructions, where they can change without a
+provider release.
 
-Flox options:
+Available capability profiles:
 
-- `Flox — Chat`
-- `Flox — Code`
-- `Flox — Reasoning`
-- `Flox — Tools`
-- `Flox — Vision`
+- `Automatic — Chat`
+- `Automatic — Code`
+- `Automatic — Reasoning`
+- `Automatic — Tools`
+- `Automatic — Vision`
 
 None of these profiles identifies a model, deployment, GPU, or provider. If a
 compatible deployment stops, the next request routes to another live compatible
@@ -23,7 +25,7 @@ no live model with its required capabilities.
 2. Configure the FlowFlox provider once with `https://gateway.flowflox.dev/v1`
    and the server-only internal integration credential.
 3. Replace the workflow HTTP node with a Dify LLM node.
-4. Select `Flox — Chat` for this knowledge assistant and connect
+4. Select `Automatic — Chat` for this knowledge assistant and connect
    it directly to the Answer node.
 
 The workflow must not select a raw Qwen/RunPod model. The provider always calls

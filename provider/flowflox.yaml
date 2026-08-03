@@ -1,14 +1,14 @@
 provider: flowflox
 label:
-  en_US: Flox
+  en_US: FlowFlox
 description:
-  en_US: "Flox finds the right ready-to-help AI for each request."
+  en_US: "Routes each request to a live, compatible FlowFlox model."
 icon_small:
   en_US: icon.svg
 background: "#EEF4FF"
 help:
   title:
-    en_US: Set up Flox
+    en_US: Set up FlowFlox
   url:
     en_US: https://gateway.flowflox.dev/v1
 supported_model_types:
@@ -19,18 +19,18 @@ provider_credential_schema:
   credential_form_schemas:
     - variable: api_base_url
       label:
-        en_US: Flox connection URL
+        en_US: FlowFlox connection URL
       type: text-input
       required: true
       placeholder:
         en_US: https://gateway.flowflox.dev/v1
     - variable: api_key
       label:
-        en_US: Flox connection key
+        en_US: FlowFlox connection key
       type: secret-input
       required: true
       placeholder:
-        en_US: Server-only Flox connection key
+        en_US: Server-only FlowFlox connection key
 models:
   llm:
     predefined:

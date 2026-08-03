@@ -1,6 +1,6 @@
 model: flowflox-auto-chat
 label:
-  en_US: "Flox — Chat"
+  en_US: "Automatic — Chat"
 model_type: llm
 features: []
 model_properties:

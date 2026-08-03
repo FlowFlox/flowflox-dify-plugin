@@ -75,10 +75,10 @@ class FlowFloxLargeLanguageModel(LargeLanguageModel):
     ) -> LLMResult | Generator[LLMResultChunk, None, None]:
         required_capabilities = PROFILE_CAPABILITIES.get(model)
         if not required_capabilities:
-            raise InvokeBadRequestError("Choose a Flox option for this task.")
+            raise InvokeBadRequestError("Choose an Automatic capability profile for this task.")
         if tools and "tools" not in required_capabilities:
             raise InvokeBadRequestError(
-                "This node uses tools. Choose Flox — Tools so Flox can use them."
+                "This node uses tools. Choose Automatic — Tools for this task."
             )
 
         body: dict[str, Any] = {
@@ -166,7 +166,7 @@ class FlowFloxLargeLanguageModel(LargeLanguageModel):
     def validate_credentials(self, model: str, credentials: Mapping) -> None:
         required_capabilities = PROFILE_CAPABILITIES.get(model)
         if not required_capabilities:
-            raise CredentialsValidateFailedError("Unknown Flox option.")
+            raise CredentialsValidateFailedError("Unknown FlowFlox capability profile.")
         try:
             response = requests.get(
                 api_url(credentials, "/v1/models"),

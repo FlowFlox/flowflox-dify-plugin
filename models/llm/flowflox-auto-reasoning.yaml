@@ -1,6 +1,6 @@
 model: flowflox-auto-reasoning
 label:
-  en_US: "Flox — Reasoning"
+  en_US: "Automatic — Reasoning"
 model_type: llm
 features:
   - agent-thought

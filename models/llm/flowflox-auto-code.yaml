@@ -1,6 +1,6 @@
 model: flowflox-auto-code
 label:
-  en_US: "Flox — Code"
+  en_US: "Automatic — Code"
 model_type: llm
 features: []
 model_properties:

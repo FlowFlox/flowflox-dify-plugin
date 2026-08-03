@@ -1,6 +1,6 @@
 model: flowflox-auto-tools
 label:
-  en_US: "Flox — Tools"
+  en_US: "Automatic — Tools"
 model_type: llm
 features:
   - tool-call
