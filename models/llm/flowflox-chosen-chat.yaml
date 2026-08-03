@@ -9,14 +9,14 @@ model_properties:
 parameter_rules:
   - name: flowflox_model_id
     label:
-      en_US: Model ID to try
+      en_US: Try a specific Flox model
     type: string
     # Dify only persists a newly-entered model parameter when it is required.
     # The empty default remains the automatic Flox route.
     required: true
     default: ""
     help:
-      en_US: "Optional. Use this live Flox model for this node; otherwise Flox chooses automatically."
+      en_US: "Turn this on to enter a live Flox model ID for this node. Leave it off and Flox chooses automatically."
   - name: temperature
     use_template: temperature
   - name: top_p
