@@ -11,7 +11,9 @@ parameter_rules:
     label:
       en_US: Model ID to try
     type: string
-    required: false
+    # Dify only persists a newly-entered model parameter when it is required.
+    # The empty default remains the automatic Flox route.
+    required: true
     default: ""
     help:
       en_US: "Optional. Use this live Flox model for this node; otherwise Flox chooses automatically."

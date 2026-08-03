@@ -19,7 +19,7 @@ FlowFlox takes care of the details in the background.
 3. Choose the capability that fits your app.
 4. Build and publish.
 
-For a one-off comparison, choose **Chosen model — Chat**, then enter a model ID in that node's optional **Model ID to try** setting. Flox uses that model while it is live, then returns to Automatic if it is unavailable.
+For a one-off comparison, choose **Chosen model — Chat**, then enter a model ID in that node's **Model ID to try** setting. Leave it blank to let Flox choose automatically. Flox uses the entered model while it is live, then returns to Automatic if it is unavailable.
 
 ## Releases
 
