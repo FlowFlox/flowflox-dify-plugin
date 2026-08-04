@@ -1,6 +1,6 @@
 [project]
 name = "flowflox-dify-model-provider"
-version = "0.1.7"
+version = "0.1.11"
 description = "Bring FlowFlox to your Dify workspace"
 readme = "README.md"
 requires-python = ">=3.12"

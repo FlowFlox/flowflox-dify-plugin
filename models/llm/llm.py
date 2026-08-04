@@ -326,19 +326,21 @@ class FlowFloxLargeLanguageModel(LargeLanguageModel):
         message: AssistantPromptMessage,
         usage: Any,
     ) -> Generator[LLMResultChunk, None, None]:
-        yield LLMResultChunk(
-            model=model,
-            prompt_messages=prompt_messages,
-            system_fingerprint="",
-            delta=LLMResultChunkDelta(index=0, message=message),
-        )
+        """Emit the completed FlowFlox reply as Dify's final stream event.
+
+        FlowFlox deliberately requests a complete response from its runtime so
+        it can keep routing independent of any particular model implementation.
+        A single final chunk is valid for Dify and avoids the older plugin
+        runner path that can treat a separate empty `stop` chunk as an error
+        after it has already displayed the answer.
+        """
         yield LLMResultChunk(
             model=model,
             prompt_messages=prompt_messages,
             system_fingerprint="",
             delta=LLMResultChunkDelta(
-                index=1,
-                message=AssistantPromptMessage(content=""),
+                index=0,
+                message=message,
                 finish_reason="stop",
                 usage=usage,
             ),
