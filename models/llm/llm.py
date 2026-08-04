@@ -1,8 +1,8 @@
-from collections.abc import Generator, Mapping
+from collections.abc import Mapping
 from typing import Any
 
 import requests
-from dify_plugin.entities.model.llm import LLMResult, LLMResultChunk, LLMResultChunkDelta
+from dify_plugin.entities.model.llm import LLMResult
 from dify_plugin.entities.model.message import (
     AssistantPromptMessage,
     ImagePromptMessageContent,
@@ -117,7 +117,7 @@ class FlowFloxLargeLanguageModel(LargeLanguageModel):
         stop: list[str] | None = None,
         stream: bool = True,
         user: str | None = None,
-    ) -> LLMResult | Generator[LLMResultChunk, None, None]:
+    ) -> LLMResult:
         required_capabilities = PROFILE_CAPABILITIES.get(model)
         if not required_capabilities:
             raise InvokeBadRequestError("Choose a Flox option for this task.")
@@ -216,16 +216,19 @@ class FlowFloxLargeLanguageModel(LargeLanguageModel):
             prompt_tokens=prompt_tokens,
             completion_tokens=completion_tokens,
         )
-        if not stream:
-            return LLMResult(
-                model=model,
-                prompt_messages=prompt_messages,
-                message=assistant_message,
-                usage=usage,
-                # Do not pass FlowFlox's backend fingerprint through to Dify.
-                system_fingerprint="",
-            )
-        return self._as_stream(model, prompt_messages, assistant_message, usage)
+        # Always return Dify's complete result type. Its base model interface
+        # converts this into the one final stream event that the installed Dify
+        # version expects, including usage information. Keeping that conversion
+        # in Dify avoids an extra plugin-generated terminal event after Flox has
+        # already returned an answer.
+        return LLMResult(
+            model=model,
+            prompt_messages=prompt_messages,
+            message=assistant_message,
+            usage=usage,
+            # Do not pass FlowFlox's backend fingerprint through to Dify.
+            system_fingerprint="",
+        )
 
     def validate_credentials(self, model: str, credentials: Mapping) -> None:
         required_capabilities = PROFILE_CAPABILITIES.get(model)
@@ -318,30 +321,3 @@ class FlowFloxLargeLanguageModel(LargeLanguageModel):
                         })
             return {"role": "user", "content": content}
         raise InvokeBadRequestError(f"Unsupported Dify prompt message: {type(message).__name__}.")
-
-    @staticmethod
-    def _as_stream(
-        model: str,
-        prompt_messages: list[PromptMessage],
-        message: AssistantPromptMessage,
-        usage: Any,
-    ) -> Generator[LLMResultChunk, None, None]:
-        """Emit the completed FlowFlox reply as Dify's final stream event.
-
-        FlowFlox deliberately requests a complete response from its runtime so
-        it can keep routing independent of any particular model implementation.
-        A single final chunk is valid for Dify and avoids the older plugin
-        runner path that can treat a separate empty `stop` chunk as an error
-        after it has already displayed the answer.
-        """
-        yield LLMResultChunk(
-            model=model,
-            prompt_messages=prompt_messages,
-            system_fingerprint="",
-            delta=LLMResultChunkDelta(
-                index=0,
-                message=message,
-                finish_reason="stop",
-                usage=usage,
-            ),
-        )
