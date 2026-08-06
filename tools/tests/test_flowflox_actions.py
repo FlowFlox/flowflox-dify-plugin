@@ -15,6 +15,12 @@ from flowflox_actions import (  # noqa: E402
 
 
 class FlowFloxActionContractTests(unittest.TestCase):
+    def test_visual_action_uses_an_input_form_for_the_live_picker(self) -> None:
+        manifest = (PLUGIN_ROOT / "tools" / "api_action.yaml").read_text()
+        operation_block = manifest.split("  - name: operation", 1)[1].split("  - name: input", 1)[0]
+        self.assertIn("type: dynamic-select", operation_block)
+        self.assertIn("form: llm", operation_block)
+
     def test_accepts_an_upstream_object_without_stringifying_it(self) -> None:
         self.assertEqual(parse_action_arguments({"order_id": "order_123"}), {"order_id": "order_123"})
 

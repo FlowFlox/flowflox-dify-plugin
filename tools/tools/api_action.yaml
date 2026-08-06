@@ -15,7 +15,10 @@ parameters:
       en_US: FlowFlox action
     human_description:
       en_US: Choose one action from the live catalogue allowed by this signed key. Add another API action node for each separate canvas action.
-    form: form
+    # Dify only supplies the selected provider credential when it renders an
+    # input parameter. Keeping this as a configured input lets the live,
+    # signed-key-scoped picker populate for every visual action node.
+    form: llm
   - name: input
     type: any
     required: false

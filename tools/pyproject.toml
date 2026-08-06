@@ -1,6 +1,6 @@
 [project]
 name = "flowflox-dify-tools"
-version = "0.2.0"
+version = "0.2.1"
 description = "Build composable FlowFlox API actions in Dify"
 readme = "README.md"
 requires-python = ">=3.12"

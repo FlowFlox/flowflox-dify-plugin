@@ -12,7 +12,7 @@ gateway for AI-directed action loops.
 
 1. In Dify, choose **Plugins → Install → GitHub**.
 2. Enter `https://github.com/FlowFlox/flowflox-dify-plugin`.
-3. Select the `tools-v0.2.0` release and the signed FlowFlox Tools package.
+3. Select the latest `tools-v*` release and the signed FlowFlox Tools package.
 4. Open **FlowFlox Tools** and paste a FlowFlox `ffx_svc_…` signed key.
 5. Keep the existing FlowFlox model provider selected only where the canvas
    needs AI reasoning.
@@ -25,7 +25,7 @@ picker and is checked again on every action call.
 
 Drop **FlowFlox API action** onto the Dify canvas once for each action that
 should be visible in that workflow. Its **FlowFlox action** picker is loaded
-from the signed key at configuration time—there is no typing or maintaining a
+from the signed key in the node's inputs—there is no typing or maintaining a
 separate operation list.
 
 Bind the `data` output from one action node to the **Input** of the next action
