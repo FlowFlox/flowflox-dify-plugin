@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - "v*"
+      - "tools-v*"
 
 permissions:
   contents: write
@@ -30,27 +31,48 @@ jobs:
         run: |
           set -euo pipefail
           test -n "$FLOWFLOX_DIFY_SIGNING_PRIVATE_KEY"
-          version="${GITHUB_REF_NAME#v}"
-          manifest_version="$(ruby -ryaml -e 'puts YAML.load_file("manifest.yaml").fetch("version")')"
+          if [[ "$GITHUB_REF_NAME" == tools-v* ]]; then
+            version="${GITHUB_REF_NAME#tools-v}"
+            plugin_dir="tools"
+            package_name="flowflox-tools"
+            release_title="FlowFlox Tools for Dify $GITHUB_REF_NAME"
+          else
+            version="${GITHUB_REF_NAME#v}"
+            plugin_dir="."
+            package_name="flowflox-model-provider"
+            release_title="FlowFlox for Dify $GITHUB_REF_NAME"
+          fi
+
+          manifest_version="$(ruby -ryaml -e 'puts YAML.load_file(ARGV.fetch(0)).fetch("version")' "$plugin_dir/manifest.yaml")"
           test "$version" = "$manifest_version"
 
           release_work_dir="$(mktemp -d)"
           trap 'rm -rf "$release_work_dir"' EXIT
           mkdir "$release_work_dir/plugin"
-          rsync -a --exclude='.git' --exclude='.github' --exclude='.bin' --exclude='dist' --exclude='*.difypkg' --exclude='__pycache__' ./ "$release_work_dir/plugin/"
+          rsync -a --exclude='.git' --exclude='.github' --exclude='.bin' --exclude='dist' --exclude='*.difypkg' --exclude='__pycache__' "$plugin_dir/" "$release_work_dir/plugin/"
           printf '%s' "$FLOWFLOX_DIFY_SIGNING_PRIVATE_KEY" > "$release_work_dir/flowflox-dify.private.pem"
 
-          ./.bin/dify plugin package "$release_work_dir/plugin" -o "$release_work_dir/flowflox-model-provider-$version.difypkg"
-          ./.bin/dify signature sign "$release_work_dir/flowflox-model-provider-$version.difypkg" -p "$release_work_dir/flowflox-dify.private.pem"
-          ./.bin/dify signature verify "$release_work_dir/flowflox-model-provider-$version.signed.difypkg" -p signing/flowflox-dify.public.pem
+          ./.bin/dify plugin package "$release_work_dir/plugin" -o "$release_work_dir/$package_name-$version.difypkg"
+          ./.bin/dify signature sign "$release_work_dir/$package_name-$version.difypkg" -p "$release_work_dir/flowflox-dify.private.pem" -c partner
+          ./.bin/dify signature verify "$release_work_dir/$package_name-$version.signed.difypkg" -p signing/flowflox-dify.public.pem
 
           mkdir -p dist
-          cp "$release_work_dir/flowflox-model-provider-$version.signed.difypkg" "dist/flowflox-model-provider-$version.signed.difypkg"
+          cp "$release_work_dir/$package_name-$version.signed.difypkg" "dist/$package_name-$version.signed.difypkg"
 
       - name: Publish the signed package
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" "dist/flowflox-model-provider-${GITHUB_REF_NAME#v}.signed.difypkg" \
-            --title "FlowFlox for Dify $GITHUB_REF_NAME" \
+          if [[ "$GITHUB_REF_NAME" == tools-v* ]]; then
+            version="${GITHUB_REF_NAME#tools-v}"
+            package_name="flowflox-tools"
+            release_title="FlowFlox Tools for Dify $GITHUB_REF_NAME"
+          else
+            version="${GITHUB_REF_NAME#v}"
+            package_name="flowflox-model-provider"
+            release_title="FlowFlox for Dify $GITHUB_REF_NAME"
+          fi
+
+          gh release create "$GITHUB_REF_NAME" "dist/$package_name-$version.signed.difypkg" \
+            --title "$release_title" \
             --generate-notes

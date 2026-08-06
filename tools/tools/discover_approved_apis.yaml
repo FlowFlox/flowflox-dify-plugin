@@ -1,0 +1,13 @@
+identity:
+  name: discover_approved_apis
+  author: flowflox
+  label:
+    en_US: FlowFlox API catalog
+description:
+  human:
+    en_US: See the FlowFlox APIs available to this signed key.
+  llm: Before calling a FlowFlox API, use this to discover the exact operation names, descriptions, and input schemas granted to the signed key. Never invent an operation name or parameter.
+parameters: []
+extra:
+  python:
+    source: tools/discover_approved_apis.py

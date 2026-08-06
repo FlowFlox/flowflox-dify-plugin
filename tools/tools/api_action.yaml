@@ -1,0 +1,50 @@
+identity:
+  name: api_action
+  author: flowflox
+  label:
+    en_US: FlowFlox API action
+description:
+  human:
+    en_US: Run one selected FlowFlox API action and return structured data for the next canvas step.
+  llm: This is a configured canvas action. It calls only the FlowFlox API selected in this node. Use its structured `data` output in the next action or send it to the FlowFlox model adapter for a decision.
+parameters:
+  - name: operation
+    type: dynamic-select
+    required: true
+    label:
+      en_US: FlowFlox action
+    human_description:
+      en_US: Choose one action from the live catalogue allowed by this signed key. Add another API action node for each separate canvas action.
+    form: form
+  - name: input
+    type: any
+    required: false
+    label:
+      en_US: Input
+    human_description:
+      en_US: Bind JSON from User Input or a prior FlowFlox API action. Leave empty when the selected action has no inputs.
+    llm_description: A JSON object from an upstream node, matching this configured action's input schema. Use {} when it has no inputs.
+    form: llm
+extra:
+  python:
+    source: tools/api_action.py
+output_schema:
+  type: object
+  properties:
+    ok:
+      type: boolean
+      description: Whether the selected action completed.
+    operation:
+      type: string
+      description: The approved FlowFlox operation that ran.
+    action:
+      type: object
+      description: Safe identity metadata for the selected action.
+    data:
+      description: The structured result. Bind this to a later API action or an AI adapter.
+    text:
+      type: string
+      description: Text representation of the result.
+    error:
+      type: [string, 'null']
+      description: Safe action error, when ok is false.

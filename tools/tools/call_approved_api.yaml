@@ -1,0 +1,45 @@
+identity:
+  name: call_approved_api
+  author: flowflox
+  label:
+    en_US: FlowFlox action gateway
+description:
+  human:
+    en_US: Dynamically call one approved FlowFlox API from an Agent or a routed workflow.
+  llm: Use the FlowFlox API catalog first when the operation or input schema is not already in this conversation. Call only an exact operation name returned by that catalog, then pass a valid JSON object that matches its input schema. The returned `data` is safe structured output that can be used in the next action. This action never accepts raw SQL, database credentials, cloud credentials, or a tenant selector.
+parameters:
+  - name: operation
+    type: string
+    required: true
+    label:
+      en_US: Approved operation
+    human_description:
+      en_US: The exact operation name returned by FlowFlox API catalog.
+    llm_description: Exact operation name returned by FlowFlox API catalog, for example flowflox_test_hello_world.
+    form: llm
+  - name: arguments_json
+    type: string
+    required: false
+    label:
+      en_US: JSON arguments
+    human_description:
+      en_US: A JSON object matching the selected operation's input schema. Use {} when it has no inputs.
+    llm_description: A compact JSON object matching the selected operation input schema. Use {} when there are no inputs.
+    form: llm
+extra:
+  python:
+    source: tools/call_approved_api.py
+output_schema:
+  type: object
+  properties:
+    ok:
+      type: boolean
+    operation:
+      type: string
+    action:
+      type: object
+    data: {}
+    text:
+      type: string
+    error:
+      type: [string, 'null']
