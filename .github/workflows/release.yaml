@@ -31,8 +31,15 @@ jobs:
         run: |
           set -euo pipefail
           test -n "$FLOWFLOX_DIFY_SIGNING_PRIVATE_KEY"
-          if [[ "$GITHUB_REF_NAME" == tools-v* ]]; then
-            version="${GITHUB_REF_NAME#tools-v}"
+          # Dify's GitHub updater only accepts semantic release tags. The
+          # 0.2 release line belongs to the separate FlowFlox Tools plugin;
+          # the existing 0.1 line remains the model-provider plugin.
+          if [[ "$GITHUB_REF_NAME" == tools-v* || "$GITHUB_REF_NAME" == v0.2.* ]]; then
+            if [[ "$GITHUB_REF_NAME" == tools-v* ]]; then
+              version="${GITHUB_REF_NAME#tools-v}"
+            else
+              version="${GITHUB_REF_NAME#v}"
+            fi
             plugin_dir="tools"
             package_name="flowflox-tools"
             release_title="FlowFlox Tools for Dify $GITHUB_REF_NAME"
@@ -63,8 +70,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if [[ "$GITHUB_REF_NAME" == tools-v* ]]; then
-            version="${GITHUB_REF_NAME#tools-v}"
+          if [[ "$GITHUB_REF_NAME" == tools-v* || "$GITHUB_REF_NAME" == v0.2.* ]]; then
+            if [[ "$GITHUB_REF_NAME" == tools-v* ]]; then
+              version="${GITHUB_REF_NAME#tools-v}"
+            else
+              version="${GITHUB_REF_NAME#v}"
+            fi
             package_name="flowflox-tools"
             release_title="FlowFlox Tools for Dify $GITHUB_REF_NAME"
           else
