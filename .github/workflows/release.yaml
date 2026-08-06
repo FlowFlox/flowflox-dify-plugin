@@ -87,3 +87,14 @@ jobs:
           gh release create "$GITHUB_REF_NAME" "dist/$package_name-$version.signed.difypkg" \
             --title "$release_title" \
             --generate-notes
+
+      - name: Retire legacy tools release tags
+        if: github.ref_name == 'v0.2.3'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          # These releases predate Dify's semantic-tag updater and have been
+          # superseded by the v0.2.x tools releases above.
+          gh release delete tools-v0.2.0 --yes --cleanup-tag
+          gh release delete tools-v0.2.1 --yes --cleanup-tag
