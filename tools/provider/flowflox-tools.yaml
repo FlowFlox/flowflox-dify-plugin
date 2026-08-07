@@ -4,7 +4,7 @@ identity:
   label:
     en_US: FlowFlox Tools
   description:
-    en_US: Connect FlowFlox inside each Dify app, then use its approved API actions.
+    en_US: Authorize each Dify app with a one-time code, then use its approved API actions.
   icon: icon.svg
   tags:
     - utilities

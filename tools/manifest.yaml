@@ -1,11 +1,11 @@
-version: 0.3.6
+version: 0.3.7
 type: plugin
 author: flowflox
 name: flowflox-tools
 label:
   en_US: FlowFlox Tools
 description:
-  en_US: Connect a scoped FlowFlox key inside each Dify app and call only its approved APIs.
+  en_US: Authorize one Dify app at a time and call only its approved FlowFlox APIs.
 icon: icon.svg
 icon_dark: icon-dark.svg
 resource:

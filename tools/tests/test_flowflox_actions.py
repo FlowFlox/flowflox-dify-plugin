@@ -33,10 +33,17 @@ from flowflox_weather import (  # noqa: E402
 class FlowFloxActionContractTests(unittest.TestCase):
     def test_provider_has_no_global_flowflox_key_authorization(self) -> None:
         provider = (PLUGIN_ROOT / "provider" / "flowflox-tools.yaml").read_text()
+        setup_tool = (PLUGIN_ROOT / "tools" / "connect_app.yaml").read_text()
+        client = (PLUGIN_ROOT / "flowflox_mcp.py").read_text()
         self.assertNotIn("credentials_schema", provider)
         self.assertNotIn("flowflox_service_key", provider)
         self.assertIn("tools/connect_app.yaml", provider)
         self.assertIn("tools/conditional_api_action.yaml", provider)
+        self.assertIn("flowflox_authorization_code", setup_tool)
+        self.assertIn("ffx_dac_", setup_tool)
+        self.assertNotIn("ffx_svc_", setup_tool)
+        self.assertIn("/v1/dify/app-connections/exchange", client)
+        self.assertNotIn("APP_CONNECTION_URL", client)
 
     def test_conditional_action_is_explicitly_branch_first(self) -> None:
         definition = (PLUGIN_ROOT / "tools" / "conditional_api_action.yaml").read_text()
@@ -85,7 +92,7 @@ class FlowFloxActionContractTests(unittest.TestCase):
         with self.assertRaises(FlowFloxMcpError):
             require_dify_app_id(Session(), {APP_CONTEXT_PARAMETER: "not-an-app-id"})
 
-    def test_app_connection_storage_never_contains_the_service_key(self) -> None:
+    def test_app_connection_storage_never_contains_a_setup_or_service_key(self) -> None:
         class Storage:
             def __init__(self) -> None:
                 self.values: dict[str, bytes] = {}
@@ -109,6 +116,7 @@ class FlowFloxActionContractTests(unittest.TestCase):
         stored = next(iter(session.storage.values.values())).decode("utf-8")
         self.assertIn("ffx_app_", stored)
         self.assertNotIn("ffx_svc_", stored)
+        self.assertNotIn("ffx_dac_", stored)
 
     def test_agent_loads_only_the_capability_for_its_system_bound_app(self) -> None:
         class Storage:

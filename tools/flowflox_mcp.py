@@ -11,28 +11,29 @@ import requests
 from flowflox_errors import FlowFloxMcpError
 
 MCP_SERVER_URL = "https://gateway.flowflox.dev/v1/mcp"
-APP_CONNECTION_URL = "https://gateway.flowflox.dev/v1/dify/app-connections"
+APP_CONNECTION_EXCHANGE_URL = "https://gateway.flowflox.dev/v1/dify/app-connections/exchange"
 REQUEST_TIMEOUT_SECONDS = 20
 
 
-def _service_key(key: str) -> str:
-    key = str(key or "").strip()
-    if not key:
-        raise FlowFloxMcpError("A FlowFlox signed key is required.")
-    if not key.startswith("ffx_svc_"):
-        raise FlowFloxMcpError("The FlowFlox signed key is not valid.")
-    return key
+def _authorization_code(code: str) -> str:
+    """Accept only a short-lived setup code, never a durable service key."""
+    code = str(code or "").strip()
+    if not code:
+        raise FlowFloxMcpError("A one-time FlowFlox Dify authorization code is required.")
+    if not code.startswith("ffx_dac_"):
+        raise FlowFloxMcpError("The FlowFlox Dify authorization code is not valid.")
+    return code
 
 
 def _app_runtime_token(connection: Any) -> str:
     token = str(getattr(connection, "runtime_token", "") or "").strip()
     if not token.startswith("ffx_app_"):
-        raise FlowFloxMcpError("This Dify app does not have a valid FlowFlox connection. Connect it again.")
+        raise FlowFloxMcpError("This Dify app does not have a valid FlowFlox authorization. Authorize it again.")
     return token
 
 
-def connect_dify_app(session: Any, service_key: str, connection_name: str = "") -> Any:
-    """Exchange a raw service key for a capability bound to one Dify app."""
+def connect_dify_app(session: Any, authorization_code: str) -> Any:
+    """Exchange one setup code for a capability bound to one Dify app."""
     # Import here to avoid a circular import: app connection storage imports
     # FlowFloxMcpError from this module.
     from flowflox_app_connection import FlowFloxAppConnection, require_dify_app_id
@@ -40,45 +41,38 @@ def connect_dify_app(session: Any, service_key: str, connection_name: str = "") 
     app_id = require_dify_app_id(session)
     try:
         response = requests.post(
-            APP_CONNECTION_URL,
+            APP_CONNECTION_EXCHANGE_URL,
             headers={
-                "Authorization": f"Bearer {_service_key(service_key)}",
                 "Accept": "application/json",
                 "Content-Type": "application/json",
             },
-            json={"app_id": app_id, "name": str(connection_name or "").strip()[:120]},
+            json={"app_id": app_id, "authorization_code": _authorization_code(authorization_code)},
             timeout=REQUEST_TIMEOUT_SECONDS,
         )
     except requests.RequestException as error:
-        raise FlowFloxMcpError("FlowFlox could not create this app connection.") from error
+        raise FlowFloxMcpError("FlowFlox could not authorize this Dify app.") from error
 
     try:
         payload = response.json()
     except ValueError as error:
-        raise FlowFloxMcpError("FlowFlox returned an invalid app connection response.") from error
+        raise FlowFloxMcpError("FlowFlox returned an invalid Dify authorization response.") from error
 
     if response.status_code in (401, 403):
-        raise FlowFloxMcpError("The FlowFlox app key was not accepted.")
+        raise FlowFloxMcpError("The Dify authorization code expired, was already used, or belongs to another app.")
     if response.status_code == 409:
-        message = str(payload.get("statusMessage") or "").strip()
-        if message in {
-            "This FlowFlox key is already bound to another Dify app. Create a unique key for this app.",
-            "This Dify app already has a FlowFlox connection. Revoke it before changing the app key."
-        }:
-            raise FlowFloxMcpError(message)
-        raise FlowFloxMcpError("This FlowFlox key is already connected to another Dify app. Create a unique key for this app.")
+        raise FlowFloxMcpError("This Dify app or API credential is already connected elsewhere. Create a separate app authorization in FlowFlox.")
     if not response.ok or not isinstance(payload, dict):
-        raise FlowFloxMcpError("FlowFlox could not create this app connection.")
+        raise FlowFloxMcpError("FlowFlox could not authorize this Dify app.")
 
     raw_connection = payload.get("connection")
     runtime_token = str(payload.get("runtime_token") or "").strip()
     if not isinstance(raw_connection, dict):
-        raise FlowFloxMcpError("FlowFlox returned an invalid app connection.")
+        raise FlowFloxMcpError("FlowFlox returned an invalid Dify app connection.")
     connection_id = str(raw_connection.get("id") or "").strip()
     returned_app_id = str(raw_connection.get("app_id") or "").strip().lower()
     returned_name = str(raw_connection.get("name") or "FlowFlox").strip() or "FlowFlox"
     if not connection_id or returned_app_id != app_id or not runtime_token.startswith("ffx_app_"):
-        raise FlowFloxMcpError("FlowFlox returned an invalid app connection.")
+        raise FlowFloxMcpError("FlowFlox returned an invalid Dify app connection.")
     return FlowFloxAppConnection(
         id=connection_id,
         app_id=returned_app_id,
@@ -113,7 +107,7 @@ def _rpc(connection: Any, method: str, params: Mapping[str, Any] | None = None) 
         raise FlowFloxMcpError("FlowFlox API tools returned an invalid response.") from error
 
     if response.status_code in (401, 403):
-        raise FlowFloxMcpError("This Dify app's FlowFlox connection is no longer active. Connect it again.")
+        raise FlowFloxMcpError("This Dify app's FlowFlox authorization is no longer active. Authorize it again.")
     if not response.ok or not isinstance(payload, dict):
         raise FlowFloxMcpError("FlowFlox API tools are unavailable.")
     if isinstance(payload.get("error"), dict):
@@ -141,7 +135,7 @@ def get_authorized_tool(connection: Any, operation: str) -> dict[str, Any]:
     for tool in list_authorized_tools(connection):
         if tool["name"] == requested_operation:
             return tool
-    raise FlowFloxMcpError("That FlowFlox action is not granted to this signed key.")
+    raise FlowFloxMcpError("That FlowFlox action is not granted to this Dify app.")
 
 
 def call_authorized_tool(

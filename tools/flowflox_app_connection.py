@@ -1,8 +1,9 @@
 """App-scoped connection state for the FlowFlox Tools Dify plugin.
 
-The FlowFlox service key is accepted only by the Connect FlowFlox node.  It is
-exchanged for a connection-specific capability and is never returned by a
-tool, placed in an action output, or read by the catalog/action tools.
+A short-lived, single-use FlowFlox authorization code is accepted only by the
+one-time setup node. It is exchanged for a connection-specific capability and
+is never returned by a tool, placed in an action output, or read by the
+catalog/action tools.
 """
 
 from __future__ import annotations
@@ -71,7 +72,7 @@ def require_dify_app_id(
             "Set the FlowFlox app context field to Dify's system App ID (sys.app_id) in this Agent node."
         )
     raise FlowFloxMcpError(
-        "FlowFlox must be connected from inside a saved Dify app before its API tools can run."
+        "FlowFlox must be authorized from inside a saved Dify app before its API tools can run."
     )
 
 
@@ -84,13 +85,13 @@ def app_connection_storage_key(app_id: str) -> str:
 
 def _connection_from_payload(payload: Any, expected_app_id: str) -> FlowFloxAppConnection:
     if not isinstance(payload, dict):
-        raise FlowFloxMcpError("This Dify app does not have a valid FlowFlox connection. Connect it again.")
+        raise FlowFloxMcpError("This Dify app does not have a valid FlowFlox authorization. Authorize it again.")
     connection_id = str(payload.get("id") or "").strip()
     app_id = str(payload.get("app_id") or "").strip().lower()
     runtime_token = str(payload.get("runtime_token") or "").strip()
     name = str(payload.get("name") or "FlowFlox").strip() or "FlowFlox"
     if not connection_id or app_id != expected_app_id or not runtime_token.startswith("ffx_app_"):
-        raise FlowFloxMcpError("This Dify app does not have a valid FlowFlox connection. Connect it again.")
+        raise FlowFloxMcpError("This Dify app does not have a valid FlowFlox authorization. Authorize it again.")
     return FlowFloxAppConnection(
         id=connection_id,
         app_id=app_id,
@@ -100,17 +101,17 @@ def _connection_from_payload(payload: Any, expected_app_id: str) -> FlowFloxAppC
 
 
 def save_app_connection(session: Any, connection: FlowFloxAppConnection) -> None:
-    """Persist only the app-specific capability, never the service key."""
+    """Persist only the app-specific capability, never a setup code or service key."""
     app_id = require_dify_app_id(session)
     if connection.app_id != app_id:
-        raise FlowFloxMcpError("The FlowFlox connection belongs to a different Dify app.")
+        raise FlowFloxMcpError("The FlowFlox authorization belongs to a different Dify app.")
     try:
         session.storage.set(
             app_connection_storage_key(app_id),
             json.dumps(asdict(connection), separators=(",", ":")).encode("utf-8"),
         )
     except Exception as error:  # Dify reports storage failures through its plugin bridge.
-        raise FlowFloxMcpError("FlowFlox could not save this app connection. Try connecting again.") from error
+        raise FlowFloxMcpError("FlowFlox could not save this app authorization. Try authorizing again.") from error
 
 
 def load_app_connection(
@@ -123,10 +124,10 @@ def load_app_connection(
         raw = session.storage.get(app_connection_storage_key(app_id))
     except Exception as error:
         raise FlowFloxMcpError(
-            "Connect FlowFlox in this Dify app before using its API catalog or actions."
+            "Authorize FlowFlox in this Dify app before using its API catalog or actions."
         ) from error
     try:
         payload = json.loads(raw.decode("utf-8"))
     except (AttributeError, UnicodeDecodeError, json.JSONDecodeError) as error:
-        raise FlowFloxMcpError("This Dify app does not have a valid FlowFlox connection. Connect it again.") from error
+        raise FlowFloxMcpError("This Dify app does not have a valid FlowFlox authorization. Authorize it again.") from error
     return _connection_from_payload(payload, app_id)

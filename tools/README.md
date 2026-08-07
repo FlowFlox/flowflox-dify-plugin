@@ -9,11 +9,15 @@ FlowFlox database, storage, cloud, or tenant credentials.
 Install the plugin once in Dify. Do **not** authorize it from a global provider
 page. Each Dify app receives its own narrow FlowFlox capability.
 
-1. In that app, add **Connect FlowFlox** as a direct Tool node and enter one
-   unique scoped `ffx_svc_…` key. The node exchanges it for a narrow
-   `ffx_app_…` capability. The service key is never output or given to an
-   Agent.
-2. In that app’s Agent tool settings, bind **Dify app context** on both
+1. In **FlowFlox → AI Infrastructure → Connections**, issue a one-time Dify
+   authorization code for the saved Dify app ID and its API-only credential.
+   The `ffx_dac_…` code expires after 10 minutes and is usable once.
+2. In that app, add **Authorize FlowFlox app** as an unconnected direct Tool
+   node. Paste the one-time code and run that setup step once. It exchanges
+   the code for a narrow `ffx_app_…` capability; neither a durable service key
+   nor the capability reaches an Agent or an Answer node. Remove the setup
+   node after the success message.
+3. In that app’s Agent tool settings, bind **Dify app context** on both
    **FlowFlox API catalog** and **FlowFlox action gateway** to the system
    variable `sys.app_id`. This is a configuration value, not an LLM parameter:
    the model never sees or selects an app ID.
@@ -23,8 +27,8 @@ to a plugin tool. The form-only `sys.app_id` binding preserves the same
 app-owned context across that Dify gap, without a shared FlowFlox key.
 
 ```text
-revoke key for Dify App A  →  App A's FlowFlox actions stop
-                             App B stays connected with its own key
+revoke app credential for Dify App A  →  App A's FlowFlox actions stop
+                                        App B stays connected with its own credential
 ```
 
 Every catalogue lookup and action is checked again against that capability,
@@ -68,10 +72,12 @@ not create a router class or static trigger list for every normal API.
 ## Security
 
 - The installed plugin is code only; it has no shared FlowFlox authorization.
-- A raw service key is accepted only by **Connect FlowFlox** in its own app.
+- A setup node accepts only an expiring, single-use `ffx_dac_…` code—not a
+  durable `ffx_svc_…` service key. This avoids turning a Dify run trace into
+  a reusable credential leak.
 - Plugin storage retains only the narrow app capability, namespaced by Dify app
   ID. Agent tools receive the app ID from their form-only `sys.app_id` binding.
 - The capability can call only explicitly granted FlowFlox **API** actions. It
   cannot use model runtime, knowledge, SQL, storage, or cloud routes.
-- A service key can bind to one Dify app, making the revocation and audit
-  boundary app-specific.
+- An API-only FlowFlox credential can authorize one Dify app, making the
+  revocation and audit boundary app-specific.
