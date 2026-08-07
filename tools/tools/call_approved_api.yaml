@@ -12,7 +12,9 @@ parameters:
   # schema field. Keep it bound to sys.app_id for this canvas.
   - name: dify_app_id
     type: string
-    required: false
+    # Keep this as a required form value so Dify exposes its system-variable
+    # picker to the canvas owner. It is resolved by Dify, never by the model.
+    required: true
     label:
       en_US: Dify app context
     human_description:

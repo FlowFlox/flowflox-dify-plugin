@@ -13,7 +13,10 @@ parameters:
   # owning canvas, not selected by the model.
   - name: dify_app_id
     type: string
-    required: false
+    # Dify only renders Agent form parameters that must be configured. Making
+    # this required exposes the system-variable picker so the canvas owner can
+    # bind sys.app_id once; the model never receives this value.
+    required: true
     label:
       en_US: Dify app context
     human_description:
