@@ -1,79 +1,77 @@
 # FlowFlox Tools for Dify
 
-This is the separate FlowFlox action integration. It is not the FlowFlox model
-provider and it never chooses or runs a model.
+FlowFlox Tools is the app-scoped API-action plugin. It is separate from the
+FlowFlox model provider: it does not select a model and it never exposes
+FlowFlox database, storage, cloud, or tenant credentials.
 
-Paste one scoped FlowFlox signed key. The plugin loads only the approved APIs
-granted to that key. It then gives a Dify canvas two complementary ways to use
-them: visible, individually configured action nodes and an optional dynamic
-gateway for AI-directed action loops.
+## App connection and revocation
 
-## Install and connect
+Install the plugin once in Dify. Do **not** authorize it from a global provider
+page. Each Dify app receives its own narrow FlowFlox capability.
 
-1. In Dify, choose **Plugins → Install → GitHub**.
-2. Enter `https://github.com/FlowFlox/flowflox-dify-plugin`.
-3. Select the latest `tools-v*` release and the signed FlowFlox Tools package.
-4. Open **FlowFlox Tools** and paste a FlowFlox `ffx_svc_…` signed key.
-5. Keep the existing FlowFlox model provider selected only where the canvas
-   needs AI reasoning.
+1. In that app, add **Connect FlowFlox** as a direct Tool node and enter one
+   unique scoped `ffx_svc_…` key. The node exchanges it for a narrow
+   `ffx_app_…` capability. The service key is never output or given to an
+   Agent.
+2. In that app’s Agent tool settings, bind **Dify app context** on both
+   **FlowFlox API catalog** and **FlowFlox action gateway** to the system
+   variable `sys.app_id`. This is a configuration value, not an LLM parameter:
+   the model never sees or selects an app ID.
 
-There is no server URL, header, client ID, OAuth flow, or credential per API.
-The signed key is the only connection setting. It determines the live action
-picker and is checked again on every action call.
-
-## Build a visible action chain
-
-Drop **FlowFlox API action** onto the Dify canvas once for each action that
-should be visible in that workflow. Its **FlowFlox action** picker is loaded
-from the signed key in the node's inputs—there is no typing or maintaining a
-separate operation list.
-
-Bind the `data` output from one action node to the **Input** of the next action
-node. Every action returns the same safe contract:
+Dify's stock FunctionCalling Agent does not currently forward `session.app_id`
+to a plugin tool. The form-only `sys.app_id` binding preserves the same
+app-owned context across that Dify gap, without a shared FlowFlox key.
 
 ```text
-ok          whether the call completed
-operation   the granted action that ran
-data        structured output for the next node
-text        text representation of the result
-error       safe failure detail when ok is false
+revoke key for Dify App A  →  App A's FlowFlox actions stop
+                             App B stays connected with its own key
 ```
 
-This makes these valid canvas patterns without adding a tool per API:
+Every catalogue lookup and action is checked again against that capability,
+its parent key, its tenant/company policy, and its explicit API grants.
+
+## Open-ended AI: one intent-driven planner
+
+This is the normal approach for an assistant that must understand varied
+phrasing, languages, follow-up requests, and multi-step work:
 
 ```text
-User Input → API action: Validate → API action: Create → AI adapter → Answer
-User Input → API action: Lookup → API action: Enrich → API action: Notify
+User input → Intent planner Agent (approved app toolbox) → Answer
+                     ↳ API catalogue → eligible action → planner again
+                     ↳ current weather → planner again
 ```
 
-Use the Dify conditional node on `ok` when a failed API action needs a recovery
-path. Use the output from any action as the input to another action, an LLM, a
-code node, or a loop.
+The planner reads the full meaning and conversation, then decides whether a
+tool is needed. It may call several eligible tools in sequence, use each
+result as context, and write one final answer. Tool descriptions and JSON
+schemas define the capability contract; there are no static keyword triggers
+such as `weather` or `runtime`, and raw JSON never goes directly to the user.
 
-## Let the AI choose an action at run time
+Use **FlowFlox API catalog** before a FlowFlox action when the planner does not
+already have the approved operation and its input schema. Then use
+**FlowFlox action gateway** only with an exact catalogued operation. The
+gateway returns safe structured data for the planner’s next reasoning step.
 
-For an open-ended loop, use the two existing generic tools rather than adding
-hundreds of actions to an Agent toolbox:
+## Fixed operational processes
 
-1. **FlowFlox API catalog** returns only the actions that the signed key may
-   use, with their input schemas.
-2. **FlowFlox action gateway** takes the chosen operation and a JSON input
-   object, verifies that grant again, and returns the same action contract.
+Use separate visible **FlowFlox conditional API action** nodes only where the
+sequence is deliberately fixed and reviewable, for example:
 
-Put the adapter, catalog/gateway, and a Dify Loop in the workflow only when the
-AI must choose its next action dynamically. The model can call the gateway more
-than once; each call remains scoped by the credential. This is for a large
-catalogue. A visual action chain is for the small, intentional subset of
-actions that a particular workflow owns.
+```text
+approve invoice → charge payment → issue receipt
+```
 
-The plugin does not turn a model into a data connector and it does not bundle
-all available APIs into every workflow. Each Dify workflow chooses either
-explicit action nodes, a controlled dynamic loop, or both.
+Each node runs only when its explicit Dify branch reaches it. Bind its
+**Dify app context** field to `sys.app_id`; it does not use a global key. Do
+not create a router class or static trigger list for every normal API.
 
 ## Security
 
-The key is stored in Dify's encrypted credential field. FlowFlox verifies the
-credential and exact API grant on every catalogue lookup and every call. The
-plugin cannot reach raw SQL, Supabase, cloud storage, or cloud credentials.
-Tenant and company access always comes from the signed key, never from a tool
-parameter.
+- The installed plugin is code only; it has no shared FlowFlox authorization.
+- A raw service key is accepted only by **Connect FlowFlox** in its own app.
+- Plugin storage retains only the narrow app capability, namespaced by Dify app
+  ID. Agent tools receive the app ID from their form-only `sys.app_id` binding.
+- The capability can call only explicitly granted FlowFlox **API** actions. It
+  cannot use model runtime, knowledge, SQL, storage, or cloud routes.
+- A service key can bind to one Dify app, making the revocation and audit
+  boundary app-specific.

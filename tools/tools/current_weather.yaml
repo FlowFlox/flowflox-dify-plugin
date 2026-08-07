@@ -1,0 +1,39 @@
+identity:
+  name: current_weather
+  author: flowflox
+  label:
+    en_US: Current weather
+description:
+  human:
+    en_US: Get live current weather for a requested location.
+  llm: Use this optional, read-only capability when the user needs current weather, temperature, rain, wind, or conditions for a specific location. Infer intent from meaning in any language; do not rely on keywords. The location parameter is required. If the user has not provided a usable location and it is not available from approved app context, ask one concise follow-up question instead of calling this tool. Interpret the structured result for the user; never return raw JSON.
+parameters:
+  - name: location
+    type: string
+    required: true
+    label:
+      en_US: Location
+    human_description:
+      en_US: City, region, or place to look up.
+    llm_description: The user's requested city, region, or place. Preserve the location they supplied. Do not guess a default city.
+    form: llm
+extra:
+  python:
+    source: tools/current_weather.py
+output_schema:
+  type: object
+  properties:
+    ok:
+      type: boolean
+    source:
+      type: string
+    location:
+      type: object
+    observed_at:
+      type: string
+    timezone:
+      type: string
+    conditions:
+      type: object
+    error:
+      type: string

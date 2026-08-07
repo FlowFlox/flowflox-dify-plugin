@@ -1,0 +1,47 @@
+identity:
+  name: connect_app
+  author: flowflox
+  label:
+    en_US: Connect FlowFlox
+description:
+  human:
+    en_US: Connect a scoped FlowFlox key to this Dify app only.
+  llm: Establishes the FlowFlox connection for this Dify app. Run it before the FlowFlox API catalog or action gateway. The signed key is used only to create the app connection and is never returned to another node.
+parameters:
+  - name: flowflox_service_key
+    type: secret-input
+    required: true
+    label:
+      en_US: FlowFlox app key
+    human_description:
+      en_US: Paste the unique scoped FlowFlox key created for this Dify app. Revoking this key disables this app only.
+    form: form
+  - name: connection_name
+    type: string
+    required: false
+    label:
+      en_US: Connection name
+    human_description:
+      en_US: Optional label for this app connection.
+    form: form
+extra:
+  python:
+    source: tools/connect_app.py
+output_schema:
+  type: object
+  properties:
+    connected:
+      type: boolean
+    connection:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        app_id:
+          type: string
+    approved_action_count:
+      type: integer
+    error:
+      type: [string, 'null']

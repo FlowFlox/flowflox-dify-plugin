@@ -4,26 +4,17 @@ identity:
   label:
     en_US: FlowFlox Tools
   description:
-    en_US: One signed key loads approved actions into reusable Dify canvas nodes.
+    en_US: Connect FlowFlox inside each Dify app, then use its approved API actions.
   icon: icon.svg
   tags:
     - utilities
 
-credentials_schema:
-  - name: flowflox_service_key
-    type: secret-input
-    required: true
-    label:
-      en_US: FlowFlox signed key
-    placeholder:
-      en_US: ffx_svc_…
-    help:
-      en_US: Paste one signed FlowFlox credential. Its grants determine the APIs this provider can use.
-
 tools:
+  - tools/connect_app.yaml
   - tools/discover_approved_apis.yaml
   - tools/call_approved_api.yaml
-  - tools/api_action.yaml
+  - tools/conditional_api_action.yaml
+  - tools/current_weather.yaml
 extra:
   python:
     source: provider/flowflox-tools.py

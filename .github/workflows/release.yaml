@@ -34,7 +34,7 @@ jobs:
           # Dify's GitHub updater only accepts semantic release tags. The
           # 0.2 release line belongs to the separate FlowFlox Tools plugin;
           # the existing 0.1 line remains the model-provider plugin.
-          if [[ "$GITHUB_REF_NAME" == tools-v* || "$GITHUB_REF_NAME" == v0.2.* ]]; then
+          if [[ "$GITHUB_REF_NAME" == tools-v* || "$GITHUB_REF_NAME" == v0.2.* || "$GITHUB_REF_NAME" == v0.3.* ]]; then
             if [[ "$GITHUB_REF_NAME" == tools-v* ]]; then
               version="${GITHUB_REF_NAME#tools-v}"
             else
@@ -70,7 +70,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if [[ "$GITHUB_REF_NAME" == tools-v* || "$GITHUB_REF_NAME" == v0.2.* ]]; then
+          if [[ "$GITHUB_REF_NAME" == tools-v* || "$GITHUB_REF_NAME" == v0.2.* || "$GITHUB_REF_NAME" == v0.3.* ]]; then
             if [[ "$GITHUB_REF_NAME" == tools-v* ]]; then
               version="${GITHUB_REF_NAME#tools-v}"
             else

@@ -5,9 +5,20 @@ identity:
     en_US: FlowFlox API catalog
 description:
   human:
-    en_US: See the FlowFlox APIs available to this signed key.
-  llm: Before calling a FlowFlox API, use this to discover the exact operation names, descriptions, and input schemas granted to the signed key. Never invent an operation name or parameter.
-parameters: []
+    en_US: See the FlowFlox APIs available to this Dify app connection.
+  llm: Before calling a FlowFlox API, use this to discover the exact operation names, descriptions, and input schemas granted to this Dify app connection. Never invent an operation name or parameter.
+parameters:
+  # Dify's FunctionCalling Agent currently omits session.app_id while it
+  # invokes a plugin tool. This form-only value is resolved by Dify from the
+  # owning canvas, not selected by the model.
+  - name: dify_app_id
+    type: string
+    required: false
+    label:
+      en_US: Dify app context
+    human_description:
+      en_US: Bind once to the system App ID (sys.app_id). This selects this app's revocable FlowFlox capability and is never shown to the AI.
+    form: form
 extra:
   python:
     source: tools/discover_approved_apis.py

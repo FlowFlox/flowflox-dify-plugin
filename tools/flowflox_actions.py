@@ -54,7 +54,12 @@ def action_result(
     title: str | None = None,
     description: str | None = None,
 ) -> dict[str, Any]:
-    """Return one stable envelope that downstream Dify nodes can bind to."""
+    """Return the one app-scoped action envelope every Dify branch can bind to.
+
+    ``data`` preserves the approved action's structure for a later API or
+    transform node. ``text`` is the displayable context for an LLM; the
+    FlowFlox endpoint, not this plugin, decides what is safe to include there.
+    """
     content = result.get("content")
     text = _content_text(content)
     structured_content = result.get("structuredContent")
@@ -79,7 +84,7 @@ def action_result(
 
 
 def action_failure(operation: str, message: str) -> dict[str, Any]:
-    """Keep expected action failures inside the same downstream contract."""
+    """Keep expected failures in the same contract without leaking exceptions."""
     return {
         "ok": False,
         "operation": operation,
@@ -92,3 +97,15 @@ def action_failure(operation: str, message: str) -> dict[str, Any]:
         "text": "",
         "error": message,
     }
+
+
+def action_context_text(envelope: Mapping[str, Any]) -> str:
+    """Serialize the safe action envelope for a downstream Dify LLM node.
+
+    Dify exposes JSON ToolInvokeMessages as a structured ``json`` payload but
+    leaves the regular ``text`` output empty.  A direct Tool node followed by
+    an LLM therefore needs this separate, non-user-facing text message.  The
+    caller is still responsible for having the LLM write the final response;
+    the envelope must never be connected straight to an Answer node.
+    """
+    return json.dumps(dict(envelope), ensure_ascii=False, sort_keys=True, default=str)
