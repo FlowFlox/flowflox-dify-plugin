@@ -36,6 +36,18 @@ CHOSEN_MODEL_PROFILE = "flowflox-chosen-chat"
 AUTOMATIC_MODEL = "flowflox-auto"
 
 
+def clean_assistant_content(value: Any) -> str:
+    """Remove a provider control marker that must never reach an end user.
+
+    Some FlowFlox runtimes use the literal ``<tool_call>`` marker while
+    deciding whether to issue a structured tool call.  Dify receives actual
+    tool calls separately in ``message.tool_calls``.  Keeping this internal
+    marker in the assistant text makes an otherwise normal, AI-written reply
+    look like a static implementation detail in the chat preview.
+    """
+    return str(value or "").replace("<tool_call>", "").strip()
+
+
 def api_url(credentials: Mapping, path: str) -> str:
     base_url = str(credentials.get("api_base_url") or "").rstrip("/")
     if not base_url:
@@ -54,7 +66,7 @@ def flowflox_headers(
 ) -> dict[str, str]:
     api_key = str(credentials.get("api_key") or "").strip()
     if not api_key:
-        raise CredentialsValidateFailedError("FlowFlox internal integration credential is required.")
+        raise CredentialsValidateFailedError("FlowFlox service credential is required.")
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
@@ -73,6 +85,11 @@ def chosen_model(
     required_capabilities: tuple[str, ...],
 ) -> tuple[str, bool]:
     """Return this node's live model, otherwise the automatic Flox route."""
+    # A scoped service credential intentionally has access only to the
+    # automatic runtime. Do not make Dify's optional fixed-model comparison
+    # turn that credential into a route-selection capability.
+    if str(credentials.get("api_key") or "").strip().startswith("ffx_svc_"):
+        return AUTOMATIC_MODEL, True
     # `test_model` is kept only for workspaces configured with plugin versions before 0.1.7.
     candidate = str(
         model_parameters.get("flowflox_model_id") or credentials.get("test_model") or ""
@@ -200,7 +217,7 @@ class FlowFloxLargeLanguageModel(LargeLanguageModel):
             raise InvokeServerUnavailableError("FlowFlox returned an invalid completion response.") from error
 
         assistant_message = AssistantPromptMessage(
-            content=str(message.get("content") or ""),
+            content=clean_assistant_content(message.get("content")),
             tool_calls=self._tool_calls(message.get("tool_calls") or []),
         )
         usage_data = completion.get("usage") or {}
@@ -297,7 +314,31 @@ class FlowFloxLargeLanguageModel(LargeLanguageModel):
         if isinstance(message, SystemPromptMessage):
             return {"role": "system", "content": message.content}
         if isinstance(message, AssistantPromptMessage):
-            return {"role": "assistant", "content": message.content}
+            # An Agent sends its earlier function request back with the tool
+            # result on the next model turn. Keep the OpenAI tool-call record
+            # on that assistant message so the result remains paired with the
+            # call that produced it. Dropping this metadata turns a valid
+            # multi-step tool conversation into an orphaned tool result.
+            payload: dict[str, Any] = {
+                "role": "assistant",
+                "content": message.content or "",
+            }
+            tool_calls = getattr(message, "tool_calls", None) or []
+            if tool_calls:
+                payload["tool_calls"] = [
+                    {
+                        "id": str(getattr(call, "id", "") or "flowflox-tool-call"),
+                        "type": str(getattr(call, "type", "") or "function"),
+                        "function": {
+                            "name": str(getattr(getattr(call, "function", None), "name", "") or ""),
+                            "arguments": str(
+                                getattr(getattr(call, "function", None), "arguments", "{}") or "{}"
+                            ),
+                        },
+                    }
+                    for call in tool_calls
+                ]
+            return payload
         if isinstance(message, ToolPromptMessage):
             return {
                 "role": "tool",
