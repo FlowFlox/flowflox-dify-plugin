@@ -70,6 +70,9 @@ def flowflox_headers(
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
+        # Keep Dify requests on the FlowFlox gateway's API behaviour rather
+        # than the shared website-rendering behaviour.
+        "User-Agent": "curl/8.7.1",
     }
     if runtime_only:
         headers["X-FlowFlox-Runtime-Only"] = "true"
