@@ -1,8 +1,9 @@
-from collections.abc import Mapping
+from collections.abc import Generator, Mapping
+import json
 from typing import Any
 
 import requests
-from dify_plugin.entities.model.llm import LLMResult
+from dify_plugin.entities.model.llm import LLMResult, LLMResultChunk, LLMResultChunkDelta
 from dify_plugin.entities.model.message import (
     AssistantPromptMessage,
     ImagePromptMessageContent,
@@ -137,7 +138,7 @@ class FlowFloxLargeLanguageModel(LargeLanguageModel):
         stop: list[str] | None = None,
         stream: bool = True,
         user: str | None = None,
-    ) -> LLMResult:
+    ) -> LLMResult | Generator[LLMResultChunk, None, None]:
         required_capabilities = PROFILE_CAPABILITIES.get(model)
         if not required_capabilities:
             raise InvokeBadRequestError("Choose a Flox option for this task.")
@@ -154,8 +155,13 @@ class FlowFloxLargeLanguageModel(LargeLanguageModel):
         body: dict[str, Any] = {
             "model": target_model,
             "messages": [self._message_to_openai(message) for message in prompt_messages],
-            "stream": False,
+            "stream": stream,
         }
+        if stream:
+            # Ask the OpenAI-compatible gateway for terminal usage metadata.
+            # Dify can finish the node from that final SSE event after it has
+            # already rendered each text delta in the chat.
+            body["stream_options"] = {"include_usage": True}
         for parameter in ("temperature", "top_p", "max_tokens", "presence_penalty", "frequency_penalty"):
             if parameter in model_parameters:
                 body[parameter] = model_parameters[parameter]
@@ -187,10 +193,12 @@ class FlowFloxLargeLanguageModel(LargeLanguageModel):
                 ),
                 json=body,
                 timeout=120,
+                stream=stream,
             )
         except requests.RequestException as error:
             raise InvokeConnectionError("Could not reach FlowFlox's automatic runtime.") from error
         if model == CHOSEN_MODEL_PROFILE and not use_automatic_route and response.status_code in (404, 409, 503):
+            response.close()
             body["model"] = AUTOMATIC_MODEL
             try:
                 response = requests.post(
@@ -198,6 +206,7 @@ class FlowFloxLargeLanguageModel(LargeLanguageModel):
                     headers=flowflox_headers(credentials, required_capabilities, runtime_only=True),
                     json=body,
                     timeout=120,
+                    stream=stream,
                 )
             except requests.RequestException as error:
                 raise InvokeConnectionError("Could not reach FlowFlox's automatic runtime.") from error
@@ -211,6 +220,14 @@ class FlowFloxLargeLanguageModel(LargeLanguageModel):
             )
         if not response.ok:
             raise InvokeServerUnavailableError("The FlowFlox automatic runtime did not generate a response.")
+
+        if stream:
+            return self._stream_completion(
+                model=model,
+                credentials=credentials,
+                response=response,
+                prompt_messages=prompt_messages,
+            )
 
         try:
             completion = response.json()
@@ -310,6 +327,163 @@ class FlowFloxLargeLanguageModel(LargeLanguageModel):
             )
             for tool_call in tool_calls
             if (tool_call.get("function") or {}).get("name")
+        ]
+
+    def _stream_completion(
+        self,
+        *,
+        model: str,
+        credentials: Mapping,
+        response: requests.Response,
+        prompt_messages: list[PromptMessage],
+    ) -> Generator[LLMResultChunk, None, None]:
+        """Translate the gateway's OpenAI-compatible SSE into Dify deltas."""
+        index = 0
+        completed = False
+        generated_text = ""
+        tool_calls: dict[int, dict[str, str]] = {}
+
+        try:
+            for raw_line in response.iter_lines(decode_unicode=True):
+                if not raw_line:
+                    continue
+                line = str(raw_line).strip()
+                if not line or line.startswith(":") or not line.startswith("data:"):
+                    continue
+
+                data = line.removeprefix("data:").strip()
+                if data == "[DONE]":
+                    break
+                try:
+                    payload = json.loads(data)
+                except json.JSONDecodeError:
+                    # Keep-alive messages are valid between OpenAI-style SSE
+                    # events and must not end an otherwise healthy answer.
+                    continue
+                if not isinstance(payload, Mapping):
+                    continue
+
+                choices = payload.get("choices")
+                if not isinstance(choices, list) or not choices:
+                    continue
+                choice = choices[0]
+                if not isinstance(choice, Mapping):
+                    continue
+                delta = choice.get("delta")
+                delta = delta if isinstance(delta, Mapping) else {}
+                content = str(delta.get("content") or "").replace("<tool_call>", "")
+                generated_text += content
+
+                raw_tool_calls = delta.get("tool_calls")
+                if isinstance(raw_tool_calls, list):
+                    for raw_tool_call in raw_tool_calls:
+                        if not isinstance(raw_tool_call, Mapping):
+                            continue
+                        try:
+                            tool_index = int(raw_tool_call.get("index", len(tool_calls)))
+                        except (TypeError, ValueError):
+                            tool_index = len(tool_calls)
+                        state = tool_calls.setdefault(
+                            tool_index,
+                            {"id": "", "type": "function", "name": "", "arguments": ""},
+                        )
+                        if raw_tool_call.get("id"):
+                            state["id"] = str(raw_tool_call["id"])
+                        if raw_tool_call.get("type"):
+                            state["type"] = str(raw_tool_call["type"])
+                        function = raw_tool_call.get("function")
+                        if not isinstance(function, Mapping):
+                            continue
+                        if function.get("name"):
+                            state["name"] = str(function["name"])
+                        if function.get("arguments"):
+                            state["arguments"] += str(function["arguments"])
+
+                finish_reason = str(choice.get("finish_reason") or "").strip() or None
+                if not content and not finish_reason:
+                    continue
+
+                if finish_reason:
+                    usage = self._stream_usage(
+                        model=model,
+                        credentials=credentials,
+                        prompt_messages=prompt_messages,
+                        content=generated_text,
+                        value=payload.get("usage"),
+                    )
+                    yield LLMResultChunk(
+                        model=model,
+                        prompt_messages=list(prompt_messages),
+                        system_fingerprint="",
+                        delta=LLMResultChunkDelta(
+                            index=index,
+                            message=AssistantPromptMessage(
+                                content=content,
+                                tool_calls=self._stream_tool_calls(tool_calls),
+                            ),
+                            finish_reason=finish_reason,
+                            usage=usage,
+                        ),
+                    )
+                    completed = True
+                    break
+
+                yield LLMResultChunk(
+                    model=model,
+                    prompt_messages=list(prompt_messages),
+                    system_fingerprint="",
+                    delta=LLMResultChunkDelta(
+                        index=index,
+                        message=AssistantPromptMessage(content=content),
+                    ),
+                )
+                index += 1
+
+            if not completed:
+                raise InvokeServerUnavailableError(
+                    "FlowFlox ended the response before sending a completion event."
+                )
+        except requests.RequestException as error:
+            raise InvokeConnectionError("The FlowFlox response stream was interrupted.") from error
+        finally:
+            response.close()
+
+    def _stream_usage(
+        self,
+        *,
+        model: str,
+        credentials: Mapping,
+        prompt_messages: list[PromptMessage],
+        content: str,
+        value: Any,
+    ) -> Any:
+        usage_data = value if isinstance(value, Mapping) else {}
+        prompt_tokens = int(usage_data.get("prompt_tokens") or self._get_num_tokens_by_gpt2(
+            "\n".join(str(message.content or "") for message in prompt_messages)
+        ))
+        completion_tokens = int(usage_data.get("completion_tokens") or self._get_num_tokens_by_gpt2(content))
+        return self._calc_response_usage(
+            model=model,
+            credentials=credentials,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+        )
+
+    @staticmethod
+    def _stream_tool_calls(
+        values: Mapping[int, Mapping[str, str]],
+    ) -> list[AssistantPromptMessage.ToolCall]:
+        return [
+            AssistantPromptMessage.ToolCall(
+                id=value["id"] or f"flowflox-tool-call-{tool_index}",
+                type=value["type"] or "function",
+                function=AssistantPromptMessage.ToolCall.ToolCallFunction(
+                    name=value["name"],
+                    arguments=value["arguments"] or "{}",
+                ),
+            )
+            for tool_index, value in sorted(values.items())
+            if value["name"]
         ]
 
     @staticmethod
