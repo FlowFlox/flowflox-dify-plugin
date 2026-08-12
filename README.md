@@ -38,6 +38,16 @@ Retrieval nodes. FlowFlox deliberately does not inject a second RAG context
 into a Dify Chatflow. Use a separately scoped FlowFlox tool only when the
 Chatflow needs live tenant data, a signed file link, or an approved report.
 
+### Use the FlowFlox embedding pool for Dify Knowledge
+
+After updating the provider, choose **FlowFlox → EmbeddingGemma 300M** as the
+embedding model for the Dify dataset. Keep the normal FlowFlox gateway
+connection URL (for example `https://gateway.flowflox.dev/v1`) and use a
+server-only FlowFlox service credential with the `runtime` action plus the
+`runtime.models` and `runtime.embeddings` API grants. Dify sends document and
+query embeddings through that gateway; it never receives a RunPod URL or
+credential. Re-index existing documents after changing an embedding model.
+
 ## Live FlowFlox actions
 
 This model provider remains runtime-only. It can share the signed assistant
