@@ -148,12 +148,12 @@ class FlowFloxLargeLanguageModel(LargeLanguageModel):
                 "This node uses tools. Choose Automatic — Tools for this task."
             )
 
-        # Dify's FunctionCalling strategy can consume a generator even when a
-        # cached model schema initially calls the provider with ``stream=False``.
-        # Tool-enabled agent turns therefore prefer streaming so the Answer
-        # node receives text as it is produced. Ordinary no-tool calls keep
-        # their requested response mode.
-        should_stream = stream or bool(tools)
+        # Dify's Agent App can consume a generator even when its initial model
+        # call asks for ``stream=False``. Always use the streamed transport so
+        # ordinary conversational turns do not wait for the complete model
+        # answer before Flox receives the first delta. Tool turns use the same
+        # path, keeping one interruption and rendering contract for all chat.
+        should_stream = True
 
         route_capabilities = (
             tuple(dict.fromkeys((*required_capabilities, "streaming")))
