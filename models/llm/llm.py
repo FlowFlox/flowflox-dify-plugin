@@ -147,6 +147,13 @@ class FlowFloxLargeLanguageModel(LargeLanguageModel):
                 "This node uses tools. Choose Automatic — Tools for this task."
             )
 
+        # Dify's FunctionCalling strategy can consume a generator even when a
+        # cached model schema initially calls the provider with ``stream=False``.
+        # Tool-enabled agent turns therefore prefer streaming so the Answer
+        # node receives text as it is produced. Ordinary no-tool calls keep
+        # their requested response mode.
+        should_stream = stream or bool(tools)
+
         target_model, use_automatic_route = (
             chosen_model(model_parameters, credentials, required_capabilities)
             if model == CHOSEN_MODEL_PROFILE
@@ -155,9 +162,9 @@ class FlowFloxLargeLanguageModel(LargeLanguageModel):
         body: dict[str, Any] = {
             "model": target_model,
             "messages": [self._message_to_openai(message) for message in prompt_messages],
-            "stream": stream,
+            "stream": should_stream,
         }
-        if stream:
+        if should_stream:
             # Ask the OpenAI-compatible gateway for terminal usage metadata.
             # Dify can finish the node from that final SSE event after it has
             # already rendered each text delta in the chat.
@@ -193,7 +200,7 @@ class FlowFloxLargeLanguageModel(LargeLanguageModel):
                 ),
                 json=body,
                 timeout=120,
-                stream=stream,
+                stream=should_stream,
             )
         except requests.RequestException as error:
             raise InvokeConnectionError("Could not reach FlowFlox's automatic runtime.") from error
@@ -206,7 +213,7 @@ class FlowFloxLargeLanguageModel(LargeLanguageModel):
                     headers=flowflox_headers(credentials, required_capabilities, runtime_only=True),
                     json=body,
                     timeout=120,
-                    stream=stream,
+                    stream=should_stream,
                 )
             except requests.RequestException as error:
                 raise InvokeConnectionError("Could not reach FlowFlox's automatic runtime.") from error
@@ -221,7 +228,7 @@ class FlowFloxLargeLanguageModel(LargeLanguageModel):
         if not response.ok:
             raise InvokeServerUnavailableError("The FlowFlox automatic runtime did not generate a response.")
 
-        if stream:
+        if should_stream:
             return self._stream_completion(
                 model=model,
                 credentials=credentials,
