@@ -4,6 +4,10 @@ label:
 model_type: llm
 features:
   - tool-call
+  # Dify's FunctionCalling strategy only requests streamed chunks when this
+  # capability is declared. Without it, the agent deliberately invokes the
+  # model with `stream=False` and Flox receives the complete response at once.
+  - stream-tool-call
 model_properties:
   mode: chat
   context_size: 32768
