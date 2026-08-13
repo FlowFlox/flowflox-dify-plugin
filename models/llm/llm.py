@@ -154,8 +154,14 @@ class FlowFloxLargeLanguageModel(LargeLanguageModel):
         # their requested response mode.
         should_stream = stream or bool(tools)
 
+        route_capabilities = (
+            tuple(dict.fromkeys((*required_capabilities, "streaming")))
+            if should_stream
+            else required_capabilities
+        )
+
         target_model, use_automatic_route = (
-            chosen_model(model_parameters, credentials, required_capabilities)
+            chosen_model(model_parameters, credentials, route_capabilities)
             if model == CHOSEN_MODEL_PROFILE
             else (AUTOMATIC_MODEL, True)
         )
@@ -194,7 +200,7 @@ class FlowFloxLargeLanguageModel(LargeLanguageModel):
                 api_url(credentials, "/v1/chat/completions"),
                 headers=flowflox_headers(
                     credentials,
-                    required_capabilities,
+                    route_capabilities,
                     runtime_only=use_automatic_route,
                     direct_model_test=not use_automatic_route,
                 ),
@@ -207,10 +213,32 @@ class FlowFloxLargeLanguageModel(LargeLanguageModel):
         if model == CHOSEN_MODEL_PROFILE and not use_automatic_route and response.status_code in (404, 409, 503):
             response.close()
             body["model"] = AUTOMATIC_MODEL
+            use_automatic_route = True
             try:
                 response = requests.post(
                     api_url(credentials, "/v1/chat/completions"),
-                    headers=flowflox_headers(credentials, required_capabilities, runtime_only=True),
+                    headers=flowflox_headers(credentials, route_capabilities, runtime_only=True),
+                    json=body,
+                    timeout=120,
+                    stream=should_stream,
+                )
+            except requests.RequestException as error:
+                raise InvokeConnectionError("Could not reach FlowFlox's automatic runtime.") from error
+        # A legacy runtime may not yet advertise the streaming capability even
+        # though it accepts OpenAI's ``stream`` flag. Fall back to its normal
+        # capability route rather than making the assistant unavailable while
+        # the runtime catalogue catches up.
+        if should_stream and response.status_code in (404, 409, 503) and route_capabilities != required_capabilities:
+            response.close()
+            try:
+                response = requests.post(
+                    api_url(credentials, "/v1/chat/completions"),
+                    headers=flowflox_headers(
+                        credentials,
+                        required_capabilities,
+                        runtime_only=use_automatic_route,
+                        direct_model_test=not use_automatic_route,
+                    ),
                     json=body,
                     timeout=120,
                     stream=should_stream,
