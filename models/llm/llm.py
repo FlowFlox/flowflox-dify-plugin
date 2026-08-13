@@ -1,5 +1,6 @@
 from collections.abc import Generator, Mapping
 import json
+import time
 from typing import Any
 
 import requests
@@ -364,6 +365,30 @@ class FlowFloxLargeLanguageModel(LargeLanguageModel):
             if (tool_call.get("function") or {}).get("name")
         ]
 
+    @staticmethod
+    def _display_deltas(content: str) -> tuple[str, ...]:
+        """Split a buffered upstream answer into safely readable stream deltas.
+
+        A compliant OpenAI-compatible endpoint can still send one large content
+        delta. Passing that through makes Dify (and consequently Flox) render
+        the whole reply at once. Normal token-sized deltas are returned
+        unchanged; only a large buffered delta is paced at word boundaries.
+        """
+        if len(content) <= 480:
+            return (content,)
+
+        chunks: list[str] = []
+        remaining = content
+        while remaining:
+            end = min(len(remaining), 120)
+            if end < len(remaining):
+                boundary = max(remaining.rfind(" ", 0, end), remaining.rfind("\n", 0, end))
+                if boundary > 0:
+                    end = boundary + 1
+            chunks.append(remaining[:end])
+            remaining = remaining[end:]
+        return tuple(chunks)
+
     def _stream_completion(
         self,
         *,
@@ -438,7 +463,22 @@ class FlowFloxLargeLanguageModel(LargeLanguageModel):
                 if not content and not finish_reason:
                     continue
 
+                display_deltas = self._display_deltas(content)
+
                 if finish_reason:
+                    for display_delta in display_deltas[:-1]:
+                        yield LLMResultChunk(
+                            model=model,
+                            prompt_messages=list(prompt_messages),
+                            system_fingerprint="",
+                            delta=LLMResultChunkDelta(
+                                index=index,
+                                message=AssistantPromptMessage(content=display_delta),
+                            ),
+                        )
+                        index += 1
+                        time.sleep(0.04)
+
                     usage = self._stream_usage(
                         model=model,
                         credentials=credentials,
@@ -453,7 +493,7 @@ class FlowFloxLargeLanguageModel(LargeLanguageModel):
                         delta=LLMResultChunkDelta(
                             index=index,
                             message=AssistantPromptMessage(
-                                content=content,
+                                content=display_deltas[-1],
                                 tool_calls=self._stream_tool_calls(tool_calls),
                             ),
                             finish_reason=finish_reason,
@@ -463,16 +503,19 @@ class FlowFloxLargeLanguageModel(LargeLanguageModel):
                     completed = True
                     break
 
-                yield LLMResultChunk(
-                    model=model,
-                    prompt_messages=list(prompt_messages),
-                    system_fingerprint="",
-                    delta=LLMResultChunkDelta(
-                        index=index,
-                        message=AssistantPromptMessage(content=content),
-                    ),
-                )
-                index += 1
+                for display_index, display_delta in enumerate(display_deltas):
+                    yield LLMResultChunk(
+                        model=model,
+                        prompt_messages=list(prompt_messages),
+                        system_fingerprint="",
+                        delta=LLMResultChunkDelta(
+                            index=index,
+                            message=AssistantPromptMessage(content=display_delta),
+                        ),
+                    )
+                    index += 1
+                    if display_index < len(display_deltas) - 1:
+                        time.sleep(0.04)
 
             if not completed:
                 raise InvokeServerUnavailableError(
