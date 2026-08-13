@@ -5,6 +5,7 @@ on:
     tags:
       - "v*"
       - "tools-v*"
+      - "development-v*"
 
 permissions:
   contents: write
@@ -28,13 +29,31 @@ jobs:
       - name: Package and verify the signed plugin
         env:
           FLOWFLOX_DIFY_SIGNING_PRIVATE_KEY: ${{ secrets.FLOWFLOX_DIFY_SIGNING_PRIVATE_KEY }}
+          FLOWFLOX_DIFY_DEVELOPMENT_SIGNING_PRIVATE_KEY_B64: ${{ secrets.FLOWFLOX_DIFY_DEVELOPMENT_SIGNING_PRIVATE_KEY_B64 }}
         run: |
           set -euo pipefail
-          test -n "$FLOWFLOX_DIFY_SIGNING_PRIVATE_KEY"
+          umask 077
+          if [[ "$GITHUB_REF_NAME" == development-v* ]]; then
+            version="${GITHUB_REF_NAME#development-v}"
+            plugin_dir="development"
+            package_name="flowflox-development-model-provider"
+            release_title="FlowFlox Development for Dify $GITHUB_REF_NAME"
+            test -n "$FLOWFLOX_DIFY_DEVELOPMENT_SIGNING_PRIVATE_KEY_B64"
+            signing_key="$RUNNER_TEMP/flowflox-development-dify.private.pem"
+            printf '%s' "$FLOWFLOX_DIFY_DEVELOPMENT_SIGNING_PRIVATE_KEY_B64" | base64 --decode > "$signing_key"
+            verification_key="signing/flowflox-development-provider.public.pem"
+          else
+            test -n "$FLOWFLOX_DIFY_SIGNING_PRIVATE_KEY"
+            signing_key="$RUNNER_TEMP/flowflox-dify.private.pem"
+            printf '%s' "$FLOWFLOX_DIFY_SIGNING_PRIVATE_KEY" > "$signing_key"
+            verification_key="signing/flowflox-dify.public.pem"
+          fi
           # Dify's GitHub updater only accepts semantic release tags. The
           # 0.2 release line belongs to the separate FlowFlox Tools plugin;
           # the existing 0.1 line remains the model-provider plugin.
-          if [[ "$GITHUB_REF_NAME" == tools-v* || "$GITHUB_REF_NAME" == v0.2.* || "$GITHUB_REF_NAME" == v0.3.* ]]; then
+          if [[ "$GITHUB_REF_NAME" == development-v* ]]; then
+            :
+          elif [[ "$GITHUB_REF_NAME" == tools-v* || "$GITHUB_REF_NAME" == v0.2.* || "$GITHUB_REF_NAME" == v0.3.* ]]; then
             if [[ "$GITHUB_REF_NAME" == tools-v* ]]; then
               version="${GITHUB_REF_NAME#tools-v}"
             else
@@ -54,14 +73,13 @@ jobs:
           test "$version" = "$manifest_version"
 
           release_work_dir="$(mktemp -d)"
-          trap 'rm -rf "$release_work_dir"' EXIT
+          trap 'rm -rf "$release_work_dir" "$signing_key"' EXIT
           mkdir "$release_work_dir/plugin"
           rsync -a --exclude='.git' --exclude='.github' --exclude='.bin' --exclude='dist' --exclude='*.difypkg' --exclude='__pycache__' "$plugin_dir/" "$release_work_dir/plugin/"
-          printf '%s' "$FLOWFLOX_DIFY_SIGNING_PRIVATE_KEY" > "$release_work_dir/flowflox-dify.private.pem"
 
           ./.bin/dify plugin package "$release_work_dir/plugin" -o "$release_work_dir/$package_name-$version.difypkg"
-          ./.bin/dify signature sign "$release_work_dir/$package_name-$version.difypkg" -p "$release_work_dir/flowflox-dify.private.pem" -c partner
-          ./.bin/dify signature verify "$release_work_dir/$package_name-$version.signed.difypkg" -p signing/flowflox-dify.public.pem
+          ./.bin/dify signature sign "$release_work_dir/$package_name-$version.difypkg" -p "$signing_key" -c partner
+          ./.bin/dify signature verify "$release_work_dir/$package_name-$version.signed.difypkg" -p "$verification_key"
 
           mkdir -p dist
           cp "$release_work_dir/$package_name-$version.signed.difypkg" "dist/$package_name-$version.signed.difypkg"
@@ -70,7 +88,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if [[ "$GITHUB_REF_NAME" == tools-v* || "$GITHUB_REF_NAME" == v0.2.* || "$GITHUB_REF_NAME" == v0.3.* ]]; then
+          if [[ "$GITHUB_REF_NAME" == development-v* ]]; then
+            version="${GITHUB_REF_NAME#development-v}"
+            package_name="flowflox-development-model-provider"
+            release_title="FlowFlox Development for Dify $GITHUB_REF_NAME"
+          elif [[ "$GITHUB_REF_NAME" == tools-v* || "$GITHUB_REF_NAME" == v0.2.* || "$GITHUB_REF_NAME" == v0.3.* ]]; then
             if [[ "$GITHUB_REF_NAME" == tools-v* ]]; then
               version="${GITHUB_REF_NAME#tools-v}"
             else
