@@ -1,0 +1,32 @@
+version: 0.1.0
+type: plugin
+author: "flowflox"
+name: "flowflox-development"
+description:
+  en_US: "Development-only FlowFlox model provider for Dify."
+label:
+  en_US: "FlowFlox Development"
+created_at: "2026-08-13T02:55:00-06:00"
+icon: icon.svg
+resource:
+  memory: 268435456
+  permission:
+    tool:
+      enabled: false
+    model:
+      enabled: true
+      llm: true
+      text_embedding: true
+plugins:
+  models:
+    - "provider/flowflox-development.yaml"
+meta:
+  version: 0.0.1
+  arch:
+    - "amd64"
+    - "arm64"
+  runner:
+    language: "python"
+    version: "3.12"
+    entrypoint: "main"
+privacy: "./privacy.md"
