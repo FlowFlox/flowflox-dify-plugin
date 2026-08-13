@@ -22,8 +22,8 @@ parameters:
     label:
       en_US: Approved MCP action
     human_description:
-      en_US: Bind the exact MCP action name from FlowFlox API catalog, for example flowflox_test_runtime_diagnostics.
-    llm_description: The exact MCP action name returned by FlowFlox API catalog and selected by the preceding router or condition. Do not invent an action name.
+      en_US: Bind the exact MCP action name from FlowFlox MCP tool catalog, for example flowflox_test_runtime_diagnostics.
+    llm_description: The exact MCP action name returned by FlowFlox MCP tool catalog and selected by the preceding router or condition. Do not invent an action name.
     form: llm
   - name: arguments_json
     type: string

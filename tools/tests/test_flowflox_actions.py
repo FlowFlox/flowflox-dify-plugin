@@ -31,6 +31,13 @@ from flowflox_weather import (  # noqa: E402
 
 
 class FlowFloxActionContractTests(unittest.TestCase):
+    def test_tool_labels_identify_the_mcp_contract(self) -> None:
+        catalog = (PLUGIN_ROOT / "tools" / "discover_approved_apis.yaml").read_text()
+        gateway = (PLUGIN_ROOT / "tools" / "call_approved_api.yaml").read_text()
+
+        self.assertIn("FlowFlox MCP tool catalog", catalog)
+        self.assertIn("FlowFlox MCP action gateway", gateway)
+
     def test_provider_has_no_global_flowflox_key_authorization(self) -> None:
         provider = (PLUGIN_ROOT / "provider" / "flowflox-tools.yaml").read_text()
         setup_tool = (PLUGIN_ROOT / "tools" / "connect_app.yaml").read_text()

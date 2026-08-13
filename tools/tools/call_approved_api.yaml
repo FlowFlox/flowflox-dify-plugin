@@ -2,11 +2,12 @@ identity:
   name: call_approved_api
   author: flowflox
   label:
-    en_US: FlowFlox action gateway
+    en_US: FlowFlox MCP action gateway
 description:
   human:
-    en_US: Dynamically call one approved FlowFlox API from an Agent or a routed workflow.
-  llm: Treat FlowFlox APIs as optional capabilities, never as default pre-processing. First decide whether the user's request actually requires an API. Use the FlowFlox API catalog when the operation or input schema is not already in this conversation. Call only an exact operation name returned by that catalog, then pass a valid JSON object that matches its input schema. You may call one or more APIs in sequence when an earlier safe result is needed by a later API or an AI review. The returned `data` is safe structured output for the next step. This action never accepts raw SQL, database credentials, cloud credentials, or a tenant selector.
+    en_US: Dynamically call one approved FlowFlox MCP tool from an Agent or a routed workflow.
+  llm: >-
+    Treat FlowFlox MCP tools as optional capabilities, never as default pre-processing. First decide whether the user's request actually requires a tool. Use the FlowFlox MCP tool catalog when the operation or input schema is not already in this conversation. Call only an exact operation name returned by that catalog, then pass a valid JSON object that matches its input schema. You may call one or more tools in sequence when an earlier safe result is needed by a later tool or an AI review. The returned `data` is safe structured output for the next step. This action never accepts raw SQL, database credentials, cloud credentials, or a tenant selector.
 parameters:
   # The Agent receives this as a Dify-resolved form value, not as a tool-call
   # schema field. Keep it bound to sys.app_id for this canvas.
@@ -26,8 +27,8 @@ parameters:
     label:
       en_US: Approved MCP action
     human_description:
-      en_US: The exact MCP action name returned by FlowFlox API catalog, for example flowflox_test_hello_world.
-    llm_description: Exact operation name returned by FlowFlox API catalog, for example flowflox_test_hello_world.
+      en_US: The exact MCP action name returned by FlowFlox MCP tool catalog, for example flowflox_test_hello_world.
+    llm_description: Exact operation name returned by FlowFlox MCP tool catalog, for example flowflox_test_hello_world.
     form: llm
   - name: arguments_json
     type: string

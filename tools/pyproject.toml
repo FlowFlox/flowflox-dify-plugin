@@ -1,7 +1,7 @@
 [project]
 name = "flowflox-dify-tools"
-version = "0.3.8"
-description = "Build composable FlowFlox API actions in Dify"
+version = "0.3.9"
+description = "Discover and call scoped FlowFlox MCP actions in Dify"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [

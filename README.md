@@ -59,8 +59,8 @@ Dify app ID, then run **Authorize FlowFlox app** once as an unconnected setup
 node. Do not paste a durable credential into Dify or configure the tools from
 a global plugin authorization panel. In the Agent's FlowFlox tool settings,
 bind the form-only **Dify app context** value to `sys.app_id`; the model does
-not see or decide that value. Attach **FlowFlox API catalog** and **FlowFlox
-action gateway** to an Agent for intent-driven tool use, or put
+not see or decide that value. Attach **FlowFlox MCP tool catalog** and
+**FlowFlox MCP action gateway** to an Agent for intent-driven tool use, or put
 **FlowFlox conditional API action** nodes after Dify router/If-Else branches
 when every decision and API step must be visible on the canvas. APIs are never
 a required first step: the request or an explicit branch must call for one.

@@ -99,23 +99,23 @@ def _rpc(connection: Any, method: str, params: Mapping[str, Any] | None = None) 
             timeout=REQUEST_TIMEOUT_SECONDS,
         )
     except requests.RequestException as error:
-        raise FlowFloxMcpError("FlowFlox API tools could not be reached.") from error
+        raise FlowFloxMcpError("FlowFlox MCP tools could not be reached.") from error
 
     try:
         payload = response.json()
     except ValueError as error:
-        raise FlowFloxMcpError("FlowFlox API tools returned an invalid response.") from error
+        raise FlowFloxMcpError("FlowFlox MCP tools returned an invalid response.") from error
 
     if response.status_code in (401, 403):
         raise FlowFloxMcpError("This Dify app's FlowFlox authorization is no longer active. Authorize it again.")
     if not response.ok or not isinstance(payload, dict):
-        raise FlowFloxMcpError("FlowFlox API tools are unavailable.")
+        raise FlowFloxMcpError("FlowFlox MCP tools are unavailable.")
     if isinstance(payload.get("error"), dict):
-        raise FlowFloxMcpError("This FlowFlox API request was not allowed.")
+        raise FlowFloxMcpError("This FlowFlox MCP request was not allowed.")
 
     result = payload.get("result")
     if not isinstance(result, dict):
-        raise FlowFloxMcpError("FlowFlox API tools returned an invalid result.")
+        raise FlowFloxMcpError("FlowFlox MCP tools returned an invalid result.")
     return result
 
 
@@ -123,7 +123,7 @@ def list_authorized_tools(connection: Any) -> list[dict[str, Any]]:
     result = _rpc(connection, "tools/list")
     tools = result.get("tools")
     if not isinstance(tools, list):
-        raise FlowFloxMcpError("FlowFlox did not return an API list.")
+        raise FlowFloxMcpError("FlowFlox did not return an MCP tool list.")
     return [tool for tool in tools if isinstance(tool, dict) and isinstance(tool.get("name"), str)]
 
 

@@ -1,11 +1,11 @@
-version: 0.3.8
+version: 0.3.9
 type: plugin
 author: flowflox
 name: flowflox-tools
 label:
   en_US: FlowFlox Tools
 description:
-  en_US: Authorize one Dify app at a time and call only its approved FlowFlox APIs.
+  en_US: Authorize one Dify app at a time, then discover and call only its approved FlowFlox MCP tools.
 icon: icon.svg
 icon_dark: icon-dark.svg
 resource:

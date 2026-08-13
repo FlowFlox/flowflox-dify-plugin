@@ -6,7 +6,8 @@ identity:
 description:
   human:
     en_US: Bind a one-time FlowFlox authorization code to this Dify app only.
-  llm: One-time app setup only. Run this direct Tool node after FlowFlox issues an authorization code for this saved Dify app. It exchanges the code for a narrow app capability before the FlowFlox API catalog or action gateway can run. Never add this tool to an Agent or connect it to the user-request path.
+  llm: >-
+    One-time app setup only. Run this direct Tool node after FlowFlox issues an authorization code for this saved Dify app. It exchanges the code for a narrow app capability before the FlowFlox MCP tool catalog or MCP action gateway can run. Never add this tool to an Agent or connect it to the user-request path.
 parameters:
   - name: flowflox_authorization_code
     type: secret-input

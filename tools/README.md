@@ -1,6 +1,6 @@
 # FlowFlox Tools for Dify
 
-FlowFlox Tools is the app-scoped API-action plugin. It is separate from the
+FlowFlox Tools is the app-scoped MCP tool plugin. It is separate from the
 FlowFlox model provider: it does not select a model and it never exposes
 FlowFlox database, storage, cloud, or tenant credentials.
 
@@ -18,7 +18,7 @@ page. Each Dify app receives its own narrow FlowFlox capability.
    nor the capability reaches an Agent or an Answer node. Remove the setup
    node after the success message.
 3. In that app’s Agent tool settings, bind **Dify app context** on both
-   **FlowFlox API catalog** and **FlowFlox action gateway** to the system
+   **FlowFlox MCP tool catalog** and **FlowFlox MCP action gateway** to the system
    variable `sys.app_id`. This is a configuration value, not an LLM parameter:
    the model never sees or selects an app ID.
 
@@ -51,9 +51,9 @@ result as context, and write one final answer. Tool descriptions and JSON
 schemas define the capability contract; there are no static keyword triggers
 such as `weather` or `runtime`, and raw JSON never goes directly to the user.
 
-Use **FlowFlox API catalog** before a FlowFlox action when the planner does not
+Use **FlowFlox MCP tool catalog** before a FlowFlox action when the planner does not
 already have the approved operation and its input schema. Then use
-**FlowFlox action gateway** only with an exact catalogued operation. The
+**FlowFlox MCP action gateway** only with an exact catalogued operation. The
 gateway returns safe structured data for the planner’s next reasoning step.
 
 ## Fixed operational processes
@@ -77,7 +77,7 @@ not create a router class or static trigger list for every normal API.
   a reusable credential leak.
 - Plugin storage retains only the narrow app capability, namespaced by Dify app
   ID. Agent tools receive the app ID from their form-only `sys.app_id` binding.
-- The capability can call only explicitly granted FlowFlox **API** actions. It
+- The capability can call only explicitly granted FlowFlox **MCP** actions. It
   cannot use model runtime, knowledge, SQL, storage, or cloud routes.
-- An API-only FlowFlox credential can authorize one Dify app, making the
+- An app-tool FlowFlox credential can authorize one Dify app, making the
   revocation and audit boundary app-specific.
