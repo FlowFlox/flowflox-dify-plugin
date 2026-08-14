@@ -71,7 +71,7 @@ changing the embedding model itself—not when adding another Dify app.
 This model provider remains runtime-only. It never receives an app-tool
 credential and it never becomes a data connector.
 
-For approved live actions, install **FlowFlox Tools** and authorize each saved
+For approved live actions, install **[FlowFlox Tools](https://github.com/FlowFlox/flowflox-dify-tools)** and authorize each saved
 Dify app with its own one-time code. Dify currently requires model providers
 and tool providers to be separate extension types; this is one FlowFlox model
 provider plus one app-scoped tools extension, not two model providers and not

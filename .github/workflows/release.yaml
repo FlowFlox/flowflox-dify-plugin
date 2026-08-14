@@ -4,7 +4,6 @@ on:
   push:
     tags:
       - "v*"
-      - "tools-v*"
 
 permissions:
   contents: write
@@ -35,24 +34,10 @@ jobs:
           signing_key="$RUNNER_TEMP/flowflox-dify.private.pem"
           printf '%s' "$FLOWFLOX_DIFY_SIGNING_PRIVATE_KEY" > "$signing_key"
           verification_key="signing/flowflox-dify.public.pem"
-          # Dify's GitHub updater only accepts semantic release tags. The
-          # 0.2 release line belongs to the separate FlowFlox Tools plugin;
-          # the existing 0.1 line remains the model-provider plugin.
-          if [[ "$GITHUB_REF_NAME" == tools-v* || "$GITHUB_REF_NAME" == v0.2.* || "$GITHUB_REF_NAME" == v0.3.* ]]; then
-            if [[ "$GITHUB_REF_NAME" == tools-v* ]]; then
-              version="${GITHUB_REF_NAME#tools-v}"
-            else
-              version="${GITHUB_REF_NAME#v}"
-            fi
-            plugin_dir="tools"
-            package_name="flowflox-tools"
-            release_title="FlowFlox Tools for Dify $GITHUB_REF_NAME"
-          else
-            version="${GITHUB_REF_NAME#v}"
-            plugin_dir="."
-            package_name="flowflox-model-provider"
-            release_title="FlowFlox for Dify $GITHUB_REF_NAME"
-          fi
+          version="${GITHUB_REF_NAME#v}"
+          plugin_dir="."
+          package_name="flowflox-model-provider"
+          release_title="FlowFlox for Dify $GITHUB_REF_NAME"
 
           manifest_version="$(ruby -ryaml -e 'puts YAML.load_file(ARGV.fetch(0)).fetch("version")' "$plugin_dir/manifest.yaml")"
           test "$version" = "$manifest_version"
@@ -73,31 +58,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if [[ "$GITHUB_REF_NAME" == tools-v* || "$GITHUB_REF_NAME" == v0.2.* || "$GITHUB_REF_NAME" == v0.3.* ]]; then
-            if [[ "$GITHUB_REF_NAME" == tools-v* ]]; then
-              version="${GITHUB_REF_NAME#tools-v}"
-            else
-              version="${GITHUB_REF_NAME#v}"
-            fi
-            package_name="flowflox-tools"
-            release_title="FlowFlox Tools for Dify $GITHUB_REF_NAME"
-          else
-            version="${GITHUB_REF_NAME#v}"
-            package_name="flowflox-model-provider"
-            release_title="FlowFlox for Dify $GITHUB_REF_NAME"
-          fi
+          version="${GITHUB_REF_NAME#v}"
+          package_name="flowflox-model-provider"
+          release_title="FlowFlox for Dify $GITHUB_REF_NAME"
 
           gh release create "$GITHUB_REF_NAME" "dist/$package_name-$version.signed.difypkg" \
             --title "$release_title" \
             --generate-notes
-
-      - name: Retire legacy tools release tags
-        if: github.ref_name == 'v0.2.3'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          # These releases predate Dify's semantic-tag updater and have been
-          # superseded by the v0.2.x tools releases above.
-          gh release delete tools-v0.2.0 --yes --cleanup-tag
-          gh release delete tools-v0.2.1 --yes --cleanup-tag
