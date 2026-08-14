@@ -43,7 +43,6 @@ models:
       # producing a duplicate embedding entry. Keep the single supported
       # embedding model explicit instead.
       - "models/text_embedding/embeddinggemma-300m.yaml"
-    position: "models/text_embedding/_position.yaml"
 extra:
   python:
     provider_source: provider/flowflox.py
