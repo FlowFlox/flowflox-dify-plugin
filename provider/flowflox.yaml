@@ -39,7 +39,10 @@ models:
     position: "models/llm/_position.yaml"
   text_embedding:
     predefined:
-      - "models/text_embedding/*.yaml"
+      # Dify 1.16 expands the ordering file when a wildcard is used here,
+      # producing a duplicate embedding entry. Keep the single supported
+      # embedding model explicit instead.
+      - "models/text_embedding/embeddinggemma-300m.yaml"
     position: "models/text_embedding/_position.yaml"
 extra:
   python:
