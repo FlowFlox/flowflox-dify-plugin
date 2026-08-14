@@ -68,7 +68,9 @@ def flowflox_headers(
 ) -> dict[str, str]:
     api_key = str(credentials.get("api_key") or "").strip()
     if not api_key:
-        raise CredentialsValidateFailedError("FlowFlox service credential is required.")
+        raise CredentialsValidateFailedError(
+            "FlowFlox requires its platform-managed Dify workspace connection token."
+        )
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
@@ -90,11 +92,6 @@ def chosen_model(
     required_capabilities: tuple[str, ...],
 ) -> tuple[str, bool]:
     """Return this node's live model, otherwise the automatic Flox route."""
-    # A scoped service credential intentionally has access only to the
-    # automatic runtime. Do not make Dify's optional fixed-model comparison
-    # turn that credential into a route-selection capability.
-    if str(credentials.get("api_key") or "").strip().startswith("ffx_svc_"):
-        return AUTOMATIC_MODEL, True
     # `test_model` is kept only for workspaces configured with plugin versions before 0.1.7.
     candidate = str(
         model_parameters.get("flowflox_model_id") or credentials.get("test_model") or ""

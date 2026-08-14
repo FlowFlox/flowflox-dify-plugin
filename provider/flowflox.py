@@ -16,7 +16,10 @@ class FlowFloxProvider(ModelProvider):
     def validate_provider_credentials(self, credentials: Mapping) -> None:
         api_key = str(credentials.get("api_key") or "").strip()
         if not api_key:
-            raise CredentialsValidateFailedError("FlowFlox internal integration credential is required.")
+            raise CredentialsValidateFailedError(
+                "A FlowFlox Dify workspace connection token is required. "
+                "Use the platform-managed gateway token, not an app-tool or service credential."
+            )
         try:
             response = requests.get(
                 models_url(credentials),

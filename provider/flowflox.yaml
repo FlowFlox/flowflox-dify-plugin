@@ -27,11 +27,11 @@ provider_credential_schema:
         en_US: https://gateway.flowflox.dev/v1
     - variable: api_key
       label:
-        en_US: FlowFlox runtime service credential
+        en_US: FlowFlox Dify workspace connection token
       type: secret-input
       required: true
       placeholder:
-        en_US: ffx_svc_… runtime-only credential
+        en_US: Platform-managed Dify gateway token
 models:
   llm:
     predefined:
